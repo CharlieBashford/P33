@@ -163,22 +163,28 @@ module nf10_input_arbiter
    // Use a generate statement with a for loop to generate fifos for each
    // of the input ports
 
-   fallthrough_small_fifo
-        #( .WIDTH(C_M_AXIS_DATA_WIDTH+C_M_AXIS_TUSER_WIDTH+C_M_AXIS_DATA_WIDTH/8+1),
-           .MAX_DEPTH_BITS(IN_FIFO_DEPTH_BIT))
-      in_arb_fifo
-        (// Outputs
-         .dout                           ({fifo_out_tlast[0], fifo_out_tuser[0], fifo_out_tstrb[0], fifo_out_tdata[0]}),
-         .full                           (),
-         .nearly_full                    (nearly_full[0]),
-	 .prog_full                      (),
-         .empty                          (empty[0]),
-         // Inputs
-         .din                            ({in_tlast[0], in_tuser[0], in_tstrb[0], in_tdata[0]}),
-         .wr_en                          (in_tvalid[0] & ~nearly_full[0]),
-         .rd_en                          (rd_en[0]),
-         .reset                          (~axi_resetn),
-         .clk                            (axi_aclk));
+   // XXX-BZ generate 5 of those and prentend to care about DMA as well.
+   genvar idx;
+   generate
+     for (idx = 0; idx < NUM_QUEUES; idx = idx + 1) begin:infifos
+       fallthrough_small_fifo
+		#( .WIDTH(C_M_AXIS_DATA_WIDTH+C_M_AXIS_TUSER_WIDTH+C_M_AXIS_DATA_WIDTH/8+1),
+		   .MAX_DEPTH_BITS(IN_FIFO_DEPTH_BIT))
+	      in_arb_fifo
+		(// Outputs
+		 .dout                           ({fifo_out_tlast[idx], fifo_out_tuser[idx], fifo_out_tstrb[idx], fifo_out_tdata[idx]}),
+		 .full                           (),
+		 .nearly_full                    (nearly_full[idx]),
+		 .prog_full                      (),
+		 .empty                          (empty[idx]),
+		 // Inputs
+		 .din                            ({in_tlast[idx], in_tuser[idx], in_tstrb[idx], in_tdata[idx]}),
+		 .wr_en                          (in_tvalid[idx] & ~nearly_full[idx]),
+		 .rd_en                          (rd_en[idx]),
+		 .reset                          (~axi_resetn),
+		 .clk                            (axi_aclk));
+     end
+   endgenerate
 
    // ------------- Logic ------------
 
@@ -210,6 +216,8 @@ module nf10_input_arbiter
    assign in_tlast[3]        = s_axis_tlast_3;
    assign s_axis_tready_3    = !nearly_full[3];
 
+   // XXX-BZ This is DMA and we don't care about it as we only do Port 0..3?
+   // Well, let's pretend we do care.
    assign in_tdata[4]        = s_axis_tdata_4;
    assign in_tstrb[4]        = s_axis_tstrb_4;
    assign in_tuser[4]        = s_axis_tuser_4;
@@ -217,13 +225,21 @@ module nf10_input_arbiter
    assign in_tlast[4]        = s_axis_tlast_4;
    assign s_axis_tready_4    = !nearly_full[4];
 
+   // XXX-BZ so we also need to reduce the cur_queue tristate to 0..3
+   // for rollover in case we do not want DMA to work, but we pretned
+   // we want it working.
    assign cur_queue_plus1    = (cur_queue == NUM_QUEUES-1) ? 0 : cur_queue + 1;
 
-   assign m_axis_tuser = fifo_out_tuser[0];
-   assign m_axis_tdata = fifo_out_tdata[0];
-   assign m_axis_tlast = fifo_out_tlast[0];
-   assign m_axis_tstrb = fifo_out_tstrb[0];
-   assign m_axis_tvalid = ~empty[0];
+   // XXX-BZ above we made the FIFOs output to all these wires but we
+   // can only ever handle one (the current) port.  This needs to change
+   // as otherwise we are reading into "nowhere in Idaho"(?) for the other 3.
+   // XXX-BZ this is outside the "FIXME" comments.   I assume this was
+   // left as an annoying exercise to the student;-)
+   assign m_axis_tuser = fifo_out_tuser[cur_queue];
+   assign m_axis_tdata = fifo_out_tdata[cur_queue];
+   assign m_axis_tlast = fifo_out_tlast[cur_queue];
+   assign m_axis_tstrb = fifo_out_tstrb[cur_queue];
+   assign m_axis_tvalid = ~empty[cur_queue];
 
    // Main state machine to cycle through the inputs
    // and transfer data from an input to the output
@@ -241,7 +257,7 @@ module nf10_input_arbiter
       /* Initially set the next state to the current state */
       state_next      = state;
       cur_queue_next  = cur_queue;
-      rd_en           = 0;
+      rd_en           = 0;		// XXX-BZ read up; assumption: this sets the entire register to 0?
 
       // FIXME:
       //   Modify logic to look at more than just input 0
@@ -251,12 +267,15 @@ module nf10_input_arbiter
 
         /* cycle between input queues until one is not empty */
         IDLE: begin
-           if(!empty[0]) begin
+           if(!empty[cur_queue]) begin
               if(m_axis_tready) begin
+	         $display("Begin of packet m_axis_tuser = 0x%x\n", m_axis_tuser);
                  state_next = WR_PKT;
-                 rd_en[0] = 1;
+                 rd_en[cur_queue] = 1;
               end
            end
+           else
+              cur_queue_next = cur_queue_plus1;
         end
 
         /* wait until eop */
@@ -264,12 +283,12 @@ module nf10_input_arbiter
            /* if this is the last word then write it and get out */
            if(m_axis_tready & m_axis_tlast) begin
               state_next = IDLE;
-	      rd_en[0] = 1;
+	      rd_en[cur_queue] = 1;
               cur_queue_next = cur_queue_plus1;
            end
            /* otherwise read and write as usual */
-           else if (m_axis_tready & !empty[0]) begin
-              rd_en[0] = 1;
+           else if (m_axis_tready & !empty[cur_queue]) begin
+              rd_en[cur_queue] = 1;
            end
         end // case: WR_PKT
 
