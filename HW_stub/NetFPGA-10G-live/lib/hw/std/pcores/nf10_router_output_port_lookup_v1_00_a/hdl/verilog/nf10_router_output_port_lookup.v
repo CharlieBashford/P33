@@ -142,10 +142,10 @@ module nf10_router_output_port_lookup
    assign S_AXIS_TREADY = !in_fifo_nearly_full;
 
    // packet is from the cpu if it is on an odd numbered port
-   assign pkt_is_from_cpu = M_AXIS_TUSER[SRC_PORT_POS+1] ||
-			    M_AXIS_TUSER[SRC_PORT_POS+3] ||
-			    M_AXIS_TUSER[SRC_PORT_POS+5] ||
-			    M_AXIS_TUSER[SRC_PORT_POS+7];
+   assign pkt_is_from_cpu = tuser_fifo[SRC_PORT_POS+1] ||
+			    tuser_fifo[SRC_PORT_POS+3] ||
+			    tuser_fifo[SRC_PORT_POS+5] ||
+			    tuser_fifo[SRC_PORT_POS+7];
 
    // modify the dst port in tuser
    always @(*) begin
@@ -157,7 +157,27 @@ module nf10_router_output_port_lookup
 	   if (M_AXIS_TVALID) begin
 
                // Send all packets to ethernet port 1 (nf1)
-		M_AXIS_TUSER[DST_PORT_POS+7:DST_PORT_POS] = 8'b100;
+		/*
+		M_AXIS_TUSER[DST_PORT_POS+7:DST_PORT_POS] = 8'b0100;
+		*/
+
+		// If the packet is coming from the CPU flood it to all
+		// physical ports.  If we receive it on a physical port
+		// flood it to the other 3 ports only.
+		// XXX-BZ This will make debugging harder but we have no
+		// interest in the packet on the software side by default.
+		if (!tuser_fifo[SRC_PORT_POS+7:SRC_PORT_POS]) begin
+			$display("Packet appeared from NOWEHERE tuser_fifo = 0x%x\n", tuser_fifo);
+		end
+		
+		if (pkt_is_from_cpu) begin
+		    $display("Packet from CPU M_AXIS_TUSER = 0x%x\n", tuser_fifo[SRC_PORT_POS+7:SRC_PORT_POS]);
+		    M_AXIS_TUSER[DST_PORT_POS+7:DST_PORT_POS] = 8'b01010101;
+		end else begin
+		    $display("Packet from PHY M_AXIS_TUSER = 0x%x\n", tuser_fifo[SRC_PORT_POS+7:SRC_PORT_POS]);
+		    M_AXIS_TUSER[DST_PORT_POS+7:DST_PORT_POS] = tuser_fifo[SRC_PORT_POS+7:SRC_PORT_POS] ^ 8'b01010101;
+		end
+		$display("Packet going to M_AXIS_TUSER = 0x%x\n", M_AXIS_TUSER);
 
                /* Here's how we'd implement a NIC: */
                /*
