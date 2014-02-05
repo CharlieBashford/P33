@@ -44,7 +44,7 @@ SYSTEM = system
 HW = hw
 SW = sw/embedded/
 
-all:
+all: clean
 	$(MAKE) -C $(HW) exporttosdk
 	$(MAKE) -C $(SW)
 	mkdir -p bitfiles
