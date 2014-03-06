@@ -35,25 +35,25 @@ struct sr_instance* my_get_sr() {
     if( ! sr ) {
         sr = malloc( sizeof(*sr) );
         true_or_die( sr!=NULL, "malloc falied in my_get_sr" );
-
+        
         router_t* subsystem = malloc( sizeof(router_t) );
         true_or_die( subsystem!=NULL, "Error: malloc failed in sr_integ_init" );
         /* router_init( subsystem ); */
         sr->interface_subsystem = subsystem;
-
+        
         sr->topo_id = 0;
         strncpy( sr->vhost, "cli", SR_NAMELEN );
         strncpy( sr->server, "cli mode (no server)", SR_NAMELEN );
         strncpy( sr->user, "cli mode (no client)", SR_NAMELEN );
         if( gethostname(sr->lhost,  SR_NAMELEN) == -1 )
             strncpy( sr->lhost, "cli mode (unknown localhost)", SR_NAMELEN );
-
+        
         sr_manual_read_intf_from_file( sr, "../config/interfaces" );
         sr->hw_init = 1;
         router_read_rtable_from_file( sr->interface_subsystem,
-                                      "../config/rtable.test_arp_icmp" );
+                                     "../config/rtable.test_arp_icmp" );
     }
-
+    
     return sr;
 }
 #   define SR my_get_sr()
@@ -74,7 +74,6 @@ static void cli_send_str( const char* str ) {
             fd_alive = FALSE;
 }
 
-
 /**
  * Wrapper for writenstrs.  Tries to send the specified string(s) with the
  * file-scope fd.  If it fails, fd_alive is set to FALSE.  Does nothing if
@@ -84,16 +83,16 @@ static void cli_send_strs( int num_args, ... ) {
     const char* str;
     int ret;
     va_list args;
-
+    
     if( !fd_alive ) return;
     va_start( args, num_args );
-
+    
     ret = 0;
     while( ret==0 && num_args-- > 0 ) {
         str = va_arg(args, const char*);
         ret = writenstr( fd, str );
     }
-
+    
     va_end( args );
     if( ret != 0 )
         fd_alive = FALSE;
@@ -129,16 +128,16 @@ void cli_send_parse_error( int num_args, ... ) {
     const char* str;
     int ret;
     va_list args;
-
+    
     if( fd_alive ) {
         va_start( args, num_args );
-
+        
         ret = 0;
         while( ret==0 && num_args-- > 0 ) {
             str = va_arg(args, const char*);
             ret = writenstr( fd, str );
         }
-
+        
         va_end( args );
         if( ret != 0 )
             fd_alive = FALSE;
@@ -152,7 +151,7 @@ void cli_send_welcome() {
 void cli_send_prompt() {
     if( !skip_next_prompt )
         cli_send_str( PROMPT );
-
+    
     skip_next_prompt = FALSE;
 }
 
@@ -234,7 +233,7 @@ void cli_show_opt_verbose() {
 void cli_show_ospf() {
     cli_send_str( "Neighbor Information:\n" );
     cli_show_ospf_neighbors();
-
+    
     cli_send_str( "Topology:\n" );
     cli_show_ospf_topo();
 }
@@ -291,18 +290,28 @@ void cli_show_vns_vhost() {
 #endif
 
 void cli_manip_ip_arp_add( gross_arp_t* data ) {
+    ip_mac_t *entry = router_find_arp_entry(get_router(), data->ip);
+    if (entry == NULL) {
+        router_add_arp_entry(get_router(), data->mac, data->ip, FALSE);
+    } else
+        cli_send_str("ARP entry already exists.");
 }
 
 void cli_manip_ip_arp_del( gross_arp_t* data ) {
+    if (!router_delete_arp_entry(get_router(), data->ip))
+        cli_send_str("ARP entry doesn't exist.");
 }
 
 void cli_manip_ip_arp_purge_all() {
+    get_router()->num_arp_cache = 0;
 }
 
 void cli_manip_ip_arp_purge_dyn() {
+    router_delete_all_arp_entries(get_router(), TRUE);
 }
 
 void cli_manip_ip_arp_purge_sta() {
+    router_delete_all_arp_entries(get_router(), FALSE);
 }
 
 void cli_manip_ip_intf_set( gross_intf_t* data ) {
@@ -319,7 +328,13 @@ void cli_manip_ip_intf_set( gross_intf_t* data ) {
 }
 
 void cli_manip_ip_intf_set_enabled( const char* intf_name, bool enabled ) {
-}
+    interface_t *intf = router_lookup_interface_via_name(get_router(), intf_name);
+    if (intf) {
+        pthread_mutex_lock( &ROUTER->intf_lock );
+        intf->enabled = enabled;
+        pthread_mutex_unlock( &ROUTER->intf_lock );
+    } else
+        cli_send_strs( 2, intf_name, " is not a valid interface\n" );}
 
 void cli_manip_ip_intf_down( gross_intf_t* data ) {
     cli_manip_ip_intf_set_enabled( data->intf_name, FALSE );
@@ -335,25 +350,37 @@ void cli_manip_ip_ospf_down() {
 void cli_manip_ip_ospf_up() {
 }
 
-void cli_manip_ip_route_add( gross_route_t* data ) {
+void cli_manip_ip_route_add( gross_route_t* data ) { //Could be wrong!!!
+    route_t *route_entry = router_find_route_entry(get_router(), data->dest, data->gw, data->mask, data->intf_name);
+    if (route_entry == NULL) {
+        router_add_route(get_router(), data->dest, data->gw, data->mask, data->intf_name, FALSE);
+    } else
+        cli_send_str("Route entry already exists.");
 }
 
 void cli_manip_ip_route_del( gross_route_t* data ) {
+    if (!router_delete_route_entry(get_router(), data->dest, data->gw, data->mask, data->intf_name))
+        cli_send_str("Route entry doesn't exist.");
 }
 
 void cli_manip_ip_route_purge_all() {
+    get_router()->num_routes = 0;
 }
 
 void cli_manip_ip_route_purge_dyn() {
+    router_delete_all_route_entries(get_router(), TRUE);
+    
 }
 
 void cli_manip_ip_route_purge_sta() {
+    router_delete_all_route_entries(get_router(), FALSE);
+    
 }
 
 void cli_date() {
     char str_time[STRLEN_TIME];
     struct timeval now;
-
+    
     gettimeofday( &now, NULL );
     time_to_string( str_time, now.tv_sec );
     cli_send_str( str_time );
@@ -372,11 +399,11 @@ bool cli_ping_handle_self( addr_ip_t ip ) {
                 cli_send_str( "Your interface is up.\n" );
             else
                 cli_send_str( "Your interface is down.\n" );
-
+            
             return TRUE;
         }
     }
-
+    
     return FALSE;
 }
 
@@ -384,7 +411,7 @@ bool cli_ping_handle_self( addr_ip_t ip ) {
 void cli_ping( gross_ip_t* data ) {
     if( cli_ping_handle_self( data->ip ) )
         return;
-
+    
     cli_ping_request( ROUTER, fd, data->ip );
     skip_next_prompt = TRUE;
 }
@@ -392,14 +419,14 @@ void cli_ping( gross_ip_t* data ) {
 void cli_ping_flood( gross_ip_int_t* data ) {
     int i;
     char str_ip[STRLEN_IP];
-
+    
     if( cli_ping_handle_self( data->ip ) )
         return;
-
+    
     ip_to_string( str_ip, data->ip );
     if( 0 != writenf( fd, "Will ping %s %u times ...\n", str_ip, data->count ) )
         fd_alive = FALSE;
-
+    
     for( i=0; i<data->count; i++ )
         cli_ping_request( ROUTER, fd, data->ip );
     skip_next_prompt = TRUE;

@@ -21,6 +21,9 @@ typedef struct {
     addr_ip_t ip;          /* IP address of the interface  */
     bool enabled;          /* whether the interface is on  */
     addr_ip_t subnet_mask; /* subnet mask of the link */
+    uint16_t helloint;
+    
+    
 #if defined _CPUMODE_
 #   define INTF0 0x02
 #   define INTF1 0x08
@@ -39,9 +42,19 @@ typedef struct {
     int  hw_fd;            /* socket file descriptor to talk to the hw */
     pthread_mutex_t hw_lock; /* lock to prevent issues w/ multiple writers */
 #endif /* MININET_MODE || _CPU_MODE_ */
-
+    
     struct neighbor_t* neighbor_list_head; /* neighboring nodes */
 } interface_t;
+
+
+typedef struct neighbor_t {
+    uint32_t id;
+    addr_ip_t ip;
+    double time_last;
+    struct neighbor_t *next_neighbor;
+} neighbor_t;
+
+
 
 /**
  * Reads in a list of interfaces from filename and adds them to the router
@@ -100,7 +113,7 @@ int intf_neighbor_to_string( interface_t* intf, char* buf, int len );
  *         was not enough space in buf to write it
  */
 int intf_hw_to_string( struct router_t* router,
-                       interface_t* intf, char* buf, int len );
+                      interface_t* intf, char* buf, int len );
 #endif /* _CPUMODE_ */
 
 #endif /* SR_INTERFACE_H */

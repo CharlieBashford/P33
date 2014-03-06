@@ -189,6 +189,13 @@ unsigned my_snprintf( char* str, unsigned size, const char* format, ... ) {
     va_end( args );
 }
 
+double get_time() {
+    struct timeval  tv;
+    gettimeofday(&tv, NULL);
+    
+    return (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000;
+}
+
 #ifdef _MEM_DEBUG_
 inline void* zcalloc_or_die( unsigned num, unsigned size, const char* file, unsigned line ) {
     void* ret;
