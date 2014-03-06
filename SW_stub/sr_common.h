@@ -153,6 +153,8 @@ void time_to_string( char* buf, unsigned sec );
  */
 unsigned my_snprintf( char* str, unsigned size, const char* format, ... );
 
+double get_time();
+
 #ifdef _MEM_DEBUG_
 #define myfree(ptr) { debug_print( "free %p (%s:%u) ... ", ptr,__FILE__,__LINE__ ); free(ptr); debug_print_more( "free done\n" ); }
 #define calloc_or_die(num,size) zcalloc_or_die(num,size,__FILE__,__LINE__)
