@@ -84,6 +84,7 @@ typedef struct {
 #endif
 #if defined MININET_MODE || defined _CPUMODE_
     byte hw_id;            /* hardware id of the interface */
+    byte hw_oq;
     int  hw_fd;            /* socket file descriptor to talk to the hw */
     pthread_mutex_t hw_lock; /* lock to prevent issues w/ multiple writers */
 #endif /* MININET_MODE || _CPU_MODE_ */

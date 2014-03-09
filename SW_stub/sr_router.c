@@ -1419,18 +1419,22 @@ void router_add_interface( router_t* router,
     // set pretty hw_id
     if( strcmp(name+PREFIX_LENGTH,"eth0")==0 ) {
         intf->hw_id = INTF0;
+        intf->hw_oq = OUT_INTF0;
         strcpy(intf->name,"nf0");
         intf_num = 0;
     } else if( strcmp(name+PREFIX_LENGTH,"eth1")==0 ) {
         intf->hw_id = INTF1;
+        intf->hw_oq = OUT_INTF1;
         strcpy(intf->name,"nf1");
         intf_num = 1;
     } else if( strcmp(name+PREFIX_LENGTH,"eth2")==0 ) {
         intf->hw_id = INTF2;
+        intf->hw_oq = OUT_INTF2;
         strcpy(intf->name,"nf2");
         intf_num = 2;
     } else if( strcmp(name+PREFIX_LENGTH,"eth3")==0 ) {
         intf->hw_id = INTF3;
+        intf->hw_oq = OUT_INTF3;
         strcpy(intf->name,"nf3");
         intf_num = 3;
     } else {
@@ -1571,30 +1575,6 @@ void router_add_database_entry( router_t* router, uint32_t router_id, link_t lin
     pthread_mutex_unlock(&router->database_lock);
 }
 
-#ifdef _CPUMODE_
-
-uint32_t out_interface(const char *intf_name) {
-    router_t *router = get_router();
-    unsigned i;
-    for (i = 0; i < router->num_interfaces; i++) {
-        if (router->interface[i].name == intf_name) {
-            break;
-        }
-    }
-    
-    switch (i) {
-        case 0: return OUT_INTF0;
-        case 1: return OUT_INTF1;
-        case 2: return OUT_INTF2;
-        case 3: return OUT_INTF3;
-        default: return OUT_INTF0;
-    }
-    
-}
-
-#endif
-
-
 void router_add_route( router_t* router, addr_ip_t prefix, addr_ip_t next_hop,
                       addr_ip_t subnet_mask, const char *intf_name, bool dynamic ) {
     route_t* route;
@@ -1634,10 +1614,12 @@ void router_add_route( router_t* router, addr_ip_t prefix, addr_ip_t next_hop,
             writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, 0);
             writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, i-1);
             
-            writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, ntohl(router->route[i+1].prefix));
-            writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, ntohl(router->route[i+1].subnet_mask));
-            writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, ntohl(router->route[i+1].next_hop));
-            writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, out_interface(router->route[i+1].interface.name));
+            writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, ntohl(router->route[i-1].prefix));
+            writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, ntohl(router->route[i-1].subnet_mask));
+            writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, ntohl(router->route[i-1].next_hop));
+            
+            uint32_t oq = (router->route[i-1].next_hop == 0)? router->route[i-1].interface.hq_id : router->route[i-1].interface.hw_oq;
+            writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, oq);
             writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, i);
 #endif
         }
@@ -1660,11 +1642,12 @@ void router_add_route( router_t* router, addr_ip_t prefix, addr_ip_t next_hop,
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, ntohl(prefix));
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, ntohl(subnet_mask));
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, ntohl(next_hop));
-    writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, out_interface(intf_name));
+    
+    uint32_t oq = (next_hop == 0)? router->route[i-1].interface.hq_id : router->route[i-1].interface.hw_oq;
+    writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, oq);
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, j);
 #endif
 
-    
     router->num_routes += 1;
     
     pthread_mutex_unlock(&router->route_table_lock);
