@@ -26,6 +26,9 @@ struct router_t;
 #include "sr_interface.h"
 #include "sr_work_queue.h"
 
+#define ARP_ETHERTYPE 0x0806
+#define IPV4_ETHERTYPE 0x0800
+
 /** holds info about a router's route */
 typedef struct {
     addr_ip_t prefix;

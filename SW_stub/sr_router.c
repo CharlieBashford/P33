@@ -20,9 +20,6 @@
 
 void sys_thread_new(void (* thread)(void *arg), void *arg);
 
-#define ARP_ETHERTYPE 0x0806
-#define IPV4_ETHERTYPE 0x0800
-
 #define OSPF_IP make_ip_addr("224.0.0.5")
 
 #define ICMP_PROTOCOL 1

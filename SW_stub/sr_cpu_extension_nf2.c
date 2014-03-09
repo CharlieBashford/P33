@@ -119,7 +119,7 @@ int sr_cpu_input( struct sr_instance* sr ) {
                                 byte* new_buf = buf + 20;
                                 memset( new_buf, 0xFF, ETH_ADDR_LEN );
                                 memcpy( new_buf+6, &router->interface[DECAP_NEXT_INTF].mac, ETH_ADDR_LEN );
-                                *((uint16_t*)(new_buf+12)) = htons( ETHERTYPE_IP );
+                                *((uint16_t*)(new_buf+12)) = IPV4_ETHERTYPE;
 
                                 /* send it back out nf2c{DECAP_NEXT_INTF} */
                                 sr_cpu_output( new_buf, len-20, &router->interface[DECAP_NEXT_INTF] );
