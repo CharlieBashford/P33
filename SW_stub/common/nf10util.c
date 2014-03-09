@@ -27,6 +27,7 @@ int readReg(int f, uint32_t addr, uint32_t *val)
 
 	v = addr;
     	if(ioctl(f, NF10_IOCTL_CMD_READ_REG, &v) < 0){
+            printf("%d %08X %p", f, addr, val);
         	perror("nf10 ioctl failed");
         	return 1;
     	}
@@ -44,6 +45,7 @@ int writeReg(int f, uint32_t addr, uint32_t val)
 	v=(v<<32)+val;
 
 	if(ioctl(f, NF10_IOCTL_CMD_WRITE_REG, v) < 0){
+            printf("%d %08X %08X", f, addr, val);
         	perror("nf10 ioctl failed");
         	return 1;
     	}

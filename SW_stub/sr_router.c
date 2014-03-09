@@ -1313,8 +1313,8 @@ interface_t* router_lookup_interface_via_name( router_t* router,
 
 void setup_interface_registers( router_t* router, int intf_num) {
     interface_t *intf = &router->interface[intf_num];
-    uint32_t low = (intf->mac.octet[1] << 24) + (intf->mac.octet[1] << 16) + (intf->mac.octet[1] << 8) + intf->mac.octet[0];
-    uint32_t high = (intf->mac.octet[1] << 8) + intf->mac.octet[0];
+    uint32_t low = (intf->mac.octet[3] << 24) + (intf->mac.octet[2] << 16) + (intf->mac.octet[1] << 8) + intf->mac.octet[0];
+    uint32_t high = (intf->mac.octet[6] << 8) + intf->mac.octet[5];
     uint32_t *low_p = malloc(sizeof(uint32_t));
     uint32_t *high_p = malloc(sizeof(uint32_t));
     
@@ -1344,7 +1344,7 @@ void setup_interface_registers( router_t* router, int intf_num) {
         readReg(intf->hw_fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_3_HIGH, high_p);
     }
     
-    debug_println("low_p=%04X high_p=%04X", low, high);
+    debug_println("low_p=%08X high_p=%08X", low, high);
 
     
     assert(*low_p == low);
