@@ -1344,10 +1344,11 @@ void setup_interface_registers( router_t* router, int intf_num) {
         readReg(intf->hw_fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_3_HIGH, high_p);
     }
     
+    debug_println("low_p=%04X high_p=%04X", low, high);
+
+    
     assert(*low_p == low);
     assert(*high_p == high);
-    
-    debug_println("low_p=%04X high_p=%04X", low, high);
     
     free(low_p);
     free(high_p);
