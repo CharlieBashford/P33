@@ -921,6 +921,26 @@ void generate_HELLO_thread() {
         for (i = 0; i < router->num_interfaces; i++) {
             interface_t *intf = &router->interface[i];
             if ((get_time() - last_sent[i]) > intf->helloint*1000) {
+                if (i == 0) {
+                    unsigned j;
+                    for (j = 0; j < 32; j++) {
+                        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, j);
+                        uint32_t *ip = malloc(sizeof(uint32_t));
+                        uint32_t *mask = malloc(sizeof(uint32_t));
+                        uint32_t *next_hop = malloc(sizeof(uint32_t));
+                        uint32_t *oq = malloc(sizeof(uint32_t));
+                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, ip);
+                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, mask);
+                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, next_hop);
+                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, oq);
+                        char ip_str[STRLEN_IP], mask_str[STRLEN_IP], next_hop_str[STRLEN_IP];
+                        ip_to_string(ip_str, *ip);
+                        ip_to_string(mask_str, *mask);
+                        ip_to_string(next_hop_str, *next_hop);
+                        debug_println("%s \t%s \t%s \t%02X", ip, mask, next_hop, oq);
+                    }
+                
+                }
                 debug_println("Sending HELLO on interface %d.", i);
                 send_HELLO_packet(intf);
                 last_sent[i] = get_time();
