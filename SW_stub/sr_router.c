@@ -1711,6 +1711,17 @@ void router_add_arp_entry( router_t *router, addr_mac_t mac, addr_ip_t ip, bool 
     arp_entry->dynamic = dynamic;
     
     router->num_arp_cache += 1;
+
+#ifdef _CPUMODE_
+    
+    uint32_t low = (mac.octet[3] << 24) + (mac.octet[2] << 16) + (mac.octet[1] << 8) + mac.octet[0];
+    uint32_t high = (mac.octet[6] << 8) + mac.octet[5];
+    writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_IP, ntohl(ip));
+    writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_LOW, low);
+    writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_HIGH, high);
+    writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_WR_ADDR, router->num_arp_cache);
+    
+#endif
     
     pthread_mutex_unlock(&router->arp_cache_lock);
 
@@ -1730,7 +1741,33 @@ bool router_delete_arp_entry( router_t *router, addr_ip_t ip) {
     unsigned j;
     for (j = i; j < router->num_arp_cache-1; j++) {
         router->arp_cache[j] = router->arp_cache[j+1];
+        
+#ifdef _CPUMODE_
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_IP, 0);
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_LOW, 0);
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_HIGH, 0);
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_WR_ADDR, j+1);
+        addr_mac_t *mac = &router->arp_cache[j+1].mac;
+        uint32_t low = (mac->octet[3] << 24) + (mac->octet[2] << 16) + (mac->octet[1] << 8) + mac->octet[0];
+        uint32_t high = (mac->octet[6] << 8) + mac->octet[5];
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_IP, ntohl(ip));
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_LOW, low);
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_HIGH, high);
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_WR_ADDR, router->num_arp_cache);
+        
+#endif
     }
+    
+#ifdef _CPUMODE_
+    
+    if (i == router->num_arp_cache -1) { //If not moving entries, just deleting last one.
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_IP, 0);
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_LOW, 0);
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_HIGH, 0);
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_WR_ADDR, i);
+    }
+    
+#endif
     
     bool succeded = FALSE;
     if (i < router->num_arp_cache) {
