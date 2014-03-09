@@ -257,7 +257,9 @@ bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t d
     if (!is_arp_packet && !is_hello_packet) {
         ip_mac_t *entry = router_find_arp_entry(get_router(), dest);
         if (router_lookup_interface_via_ip(get_router(), dest)) {
-            printf("ERROR: AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH!");
+            char dest_str[STRLEN_IP];
+            ip_to_string(dest_str, dest);
+            printf("ERROR: Trying to send ARP request for own interface %s!", dest_str);
             exit(-1);
         }
         if (entry == NULL || (get_time() - entry->time) > 15000) {
@@ -1894,6 +1896,7 @@ bool router_delete_arp_entry( router_t *router, addr_ip_t ip) {
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_LOW, 0);
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_HIGH, 0);
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_WR_ADDR, j+1);
+        
         addr_mac_t *mac = &router->arp_cache[j+1].mac;
         uint32_t low = (mac->octet[3] << 24) + (mac->octet[2] << 16) + (mac->octet[1] << 8) + mac->octet[0];
         uint32_t high = (mac->octet[6] << 8) + mac->octet[5];
