@@ -54,13 +54,25 @@ void sr_integ_hw_setup( struct sr_instance* sr ) {
     if (sr->interface_subsystem->num_interfaces >= 1) {
         sr->interface_subsystem->router_id = sr->interface_subsystem->interface[0].ip;
     }
-    get_router()->lsuint = 30;
-    get_router()->added_links = FALSE;
+    
+    router_t *router = get_router();
+    uint32_t *ip = malloc(sizeof(uint32_t));
+    unsigned i;
+    for (i = 0; i < router->num_interfaces; i++) {
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, ntohs(router->interface[i].ip));
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_WR_ADDR, i);
+        
+        
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_RD_ADDR, i);
+        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, ip);
+        debug_println("ip=%04X, read_ip=%04X", router->interface[i].ip, ip);
+        assert(*ip == ntohs(router->interface[i].ip));
+    }
+    free(ip);
     
     link_t link[get_router()->num_interfaces];
-    unsigned i;
-    for (i = 0; i < get_router()->num_interfaces; i++) {
-        interface_t *intf = &get_router()->interface[i];
+    for (i = 0; i < router->num_interfaces; i++) {
+        interface_t *intf = &router->interface[i];
         intf->helloint = 5;                                 //Find better place.
         /* Adding neighbor for interface */
         debug_println("Adding new neighbor for intf");

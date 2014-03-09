@@ -175,6 +175,8 @@ void router_init( router_t* router ) {
     
     router->num_interfaces = 0;
     router->num_routes = 0;
+    router->lsuint = 30;
+    router->added_links = FALSE;
 
     router->use_ospf = TRUE;
     
@@ -1343,9 +1345,6 @@ void setup_interface_registers( router_t* router, int intf_num) {
         readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_3_LOW, low_p);
         readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_3_HIGH, high_p);
     }
-    
-    debug_println("low_p=%08X high_p=%08X", low, high);
-
     
     assert(*low_p == low);
     assert(*high_p == high);
