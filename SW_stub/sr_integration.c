@@ -65,9 +65,19 @@ void sr_integ_hw_setup( struct sr_instance* sr ) {
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_RD_ADDR, i);
         readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, ip);
         
-        debug_println("ip=%04X, read_ip=%04X", router->interface[i].ip, *ip);
+        debug_println("ip=%08X, read_ip=%08X", router->interface[i].ip, *ip);
         assert(*ip == htonl(router->interface[i].ip));
     }
+    
+    writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, ntohl(OSPF_IP));
+    writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_WR_ADDR, i);
+    
+    writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_RD_ADDR, i);
+    readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, ip);
+    
+    debug_println("ip=%08X, read_ip=%08X", OSPF_IP, *ip);
+    assert(*ip == htonl(OSPF_IP));
+
     free(ip);
     
     link_t link[get_router()->num_interfaces];

@@ -20,8 +20,6 @@
 
 void sys_thread_new(void (* thread)(void *arg), void *arg);
 
-#define OSPF_IP make_ip_addr("224.0.0.5")
-
 #define ICMP_PROTOCOL 1
 #define TCP_PROTOCOL 6
 #define PWOSPF_PROTOCOL 89

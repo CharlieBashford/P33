@@ -29,6 +29,8 @@ struct router_t;
 #define ARP_ETHERTYPE 0x0806
 #define IPV4_ETHERTYPE 0x0800
 
+#define OSPF_IP make_ip_addr("224.0.0.5")
+
 /** holds info about a router's route */
 typedef struct {
     addr_ip_t prefix;
