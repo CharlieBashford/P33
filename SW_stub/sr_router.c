@@ -1,9 +1,5 @@
 /* Filename: sr_router.c */
 
-/*
- BUG: If a HELLO packet is recieved (and thus a LSU is sent) before a HELLO is sent, the other router does not send a LSU packet for ages...
- */
-
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -230,10 +226,11 @@ struct output_packet {
 void wait_for_arp_reply(struct output_packet *output) {
     printf("Created thread waiting for arp reply!\n");
     router_t *router = get_router();
-    int ARP_cache_size = router->num_arp_cache;
+    int ARP_cache_size;
     int attemptsLeft = 5;
     bool found = FALSE;
     while (attemptsLeft > 0) {
+        ARP_cache_size = router->num_arp_cache;
         send_ARP_request(output->dest);
         double time = get_time();
         while (ARP_cache_size == router->num_arp_cache && (get_time() - time) < 1000) { };
@@ -597,10 +594,31 @@ void print_database() {
     }
 }
 
+/*void check_links() {
+    router_t *router = get_router();
+    unsigned i, j;
+    for (i = 0; i < router->num_database; i++) {
+        database_entry_t *database_entry = &router->database[i];
+        for (j = 0; j < database_entry->len; i++) {
+            if (database_entry->link[j].router_id != 0) {
+                database_entry_t *other_entry = router_find_database_entry(router, database_entry->link[j].router_id);
+                if (other_entry == NULL) {
+                    router_remove_link_from_database_entry(router, database_entry, database_entry->link[j].router_id);
+                } else {
+                    router_find_
+                }
+            }
+        }
+    }
+}*/
+
 #define INFINITY 999999
 #define MIN(X,Y) ((X) < (Y)) ? (X) : (Y)
 
 void update_routing_table() { // TODO:Mutli threading for interface and database?
+    
+    //check_links();
+    
     router_t *router = get_router();
     debug_println("Running Dijkstra on:");
     print_database();
@@ -654,15 +672,15 @@ void update_routing_table() { // TODO:Mutli threading for interface and database
     
     while (!visited[current_pos]) {
         database_entry_t *current_entry = &router->database[current_pos];
-        //debug_println("num_links=%d", current_entry->num_links);
+        debug_println("num_links=%d", current_entry->num_links);
         for (i = 0; i < current_entry->num_links; i++) {
-            //debug_println("i=%d", i);
+            debug_println("i=%d", i);
             if (current_entry->link[i].router_id != 0) {
                 int pos = router_find_database_entry_position(router, current_entry->link[i].router_id);
-                //debug_println("isn't 0, and pos=%d", pos);
+                debug_println("isn't 0, and pos=%d", pos);
                 bool is_static = current_entry->router_id == router->router_id && current_entry->link[i].router_id == 0;
                 if (pos != -1 && !visited[pos] && (((get_time() - current_entry->link[i].time_last) < 3*router->lsuint*1000) || is_static)) { //If not expired
-                    //debug_println("checking distance: distance[%d]=%d + 1 < %d", current_pos, distance[current_pos], distance[pos]);
+                    debug_println("checking distance: distance[%d]=%d + 1 < %d", current_pos, distance[current_pos], distance[pos]);
                     if (distance[current_pos]+1 < distance[pos]) {
                         distance[pos] = distance[current_pos] + 1;
                         if (current_entry->router_id == router->router_id) {
@@ -675,7 +693,7 @@ void update_routing_table() { // TODO:Mutli threading for interface and database
             }
         }
         visited[current_pos] = TRUE;
-        //debug_println("set visited = true");
+        debug_println("set visited = true");
         int smallest = INFINITY;
         for (i = 0; i < router->num_database; i++) {
             if (!visited[i] && distance[i] < smallest) {
@@ -692,7 +710,7 @@ void update_routing_table() { // TODO:Mutli threading for interface and database
         first_router_for_routes[i] = NULL;
     }
     for (i = 0; i < router->num_database; i++) {
-        //debug_println("%dth router.", i);
+        debug_println("%dth router.", i);
         database_entry_t *database_entry = &router->database[i];
         for (j = 0; j < database_entry->num_links; j++) {
             link_t *link = &database_entry->link[j];
@@ -700,13 +718,13 @@ void update_routing_table() { // TODO:Mutli threading for interface and database
             if (((get_time() - link->time_last) < 3*router->lsuint*1000) || is_static) {
                 char subnet_no_str[16];
                 ip_to_string(subnet_no_str, link->subnet_no);
-                //debug_println("finding route for %dth link with subnet_no=%s", j, subnet_no_str);
+                debug_println("finding route for %dth link with subnet_no=%s", j, subnet_no_str);
                 for (k = 0; k < routes_added; k++) {
                     if (link->subnet_no == routes[k]->subnet_no) {
-                        //debug_println("checking distance: distance[%d]=%d + 1 < %d",i , distance[i], distance_to_routes[k]);
+                        debug_println("checking distance: distance[%d]=%d + 1 < %d",i , distance[i], distance_to_routes[k]);
                         if (distance[i] + 1 < distance_to_routes[k]) {
                             distance_to_routes[k] = distance[i] + 1;
-                            //debug_println("set distance_to_routes[%d]=%d", k, distance_to_routes[k]);
+                            debug_println("set distance_to_routes[%d]=%d", k, distance_to_routes[k]);
                             first_router_for_routes[k] = first_router[i];
                         }
                         break;
@@ -716,7 +734,7 @@ void update_routing_table() { // TODO:Mutli threading for interface and database
         }
     }
     
-    /*debug_println("Subnet No\tRouter ID\tDistance");
+    debug_println("Subnet No\tRouter ID\tDistance");
     for (i = 0; i < routes_added; i++) {
         char subnet_no_str[16], router_id_str[16];
         ip_to_string(subnet_no_str, routes[i]->subnet_no);
@@ -725,17 +743,17 @@ void update_routing_table() { // TODO:Mutli threading for interface and database
         else
             sprintf(router_id_str, "-------");
         debug_println("%s \t%s \t%d", subnet_no_str, router_id_str, distance_to_routes[i]);
-    }*/
+    }
     
     router_delete_all_route_entries(router, TRUE);
     for (i = 0; i < routes_added; i++) {
         char subnet_no_str[16];
         ip_to_string(subnet_no_str, routes[i]->subnet_no);
-        //debug_println("%d subnet_no=%s",i, subnet_no_str);
+        debug_println("%d subnet_no=%s",i, subnet_no_str);
         if (first_router_for_routes[i]) {
             char router_id_str[16];
             ip_to_string(router_id_str, *first_router_for_routes[i]);
-            //debug_println("isset and router_id=%s", router_id_str);
+            debug_println("isset and router_id=%s", router_id_str);
             if (*first_router_for_routes[i] == router->router_id) {
                 for (j = 0; j < router->num_interfaces; j++) {
                     if (routes[i]->subnet_no == (router->interface[j].ip & router->interface[j].subnet_mask)) {
@@ -748,7 +766,7 @@ void update_routing_table() { // TODO:Mutli threading for interface and database
                 for (j = 0; j < router->num_interfaces; j++) {
                     neighbor_t *neighbor = router->interface[j].neighbor_list_head;
                     while (neighbor != NULL) {
-                        //debug_println("neighbor->id=%lx, first_router_for_routes[%d]=%s", neighbor->id, i, router_id_str);
+                        debug_println("neighbor->id=%lx, first_router_for_routes[%d]=%s", neighbor->id, i, router_id_str);
                         if (neighbor->id == *first_router_for_routes[i]) {
                             router_add_route(router, routes[i]->subnet_no, neighbor->ip, routes[i]->mask, router->interface[j].name, TRUE);
                             found = TRUE;
@@ -759,7 +777,7 @@ void update_routing_table() { // TODO:Mutli threading for interface and database
                     if (found == TRUE)
                         break;
                 }
-                //debug_println("found = %d", found);
+                debug_println("found = %d", found);
             }
         }
     }
@@ -933,8 +951,8 @@ void generate_HELLO_thread() {
                 neighbor = neighbor->next_neighbor;
             }
         }
-        if (router->num_database > 0 && (router->added_links || (get_time() - last_LSU_send) > router->lsuint*10000)) {
-            debug_println("Expired: %s, Added links: %s", (((get_time() - last_LSU_send) > router->lsuint*10000)? "YES" : "NO"),
+        if (router->num_database > 0 && (router->added_links || (get_time() - last_LSU_send) > router->lsuint*1000)) {
+            debug_println("Expired: %s, Added links: %s", (((get_time() - last_LSU_send) > router->lsuint*1000)? "YES" : "NO"),
                                                         ((router->added_links)? "YES" : "NO"));
             send_LSU_packet(seq_no);
             last_LSU_send = get_time();
@@ -1327,6 +1345,35 @@ void router_add_interface( router_t* router,
       intf->hw_id = router->num_interfaces;
     }
 
+    // initialize the lock to ensure only one write per interface at a time
+    pthread_mutex_init( &intf->hw_lock, NULL );
+#endif
+    
+#ifdef _CPUMODE_ //TODO: Fix!
+     // open a socket to talk to the hw on this interface
+    debug_println("*******iface %s (check the name!)\n", name);
+    
+    int intf_num = -1;
+    // set pretty hw_id
+    if(      strcmp(name+PREFIX_LENGTH,"eth0")==0 ) {
+        intf->hw_id = INTF0;
+        intf_num = 0;
+    } else if( strcmp(name+PREFIX_LENGTH,"eth1")==0 ) {
+        intf->hw_id = INTF1;
+        intf_num = 1;
+    } else if( strcmp(name+PREFIX_LENGTH,"eth2")==0 ) {
+        intf->hw_id = INTF2;
+        intf_num = 2;
+    } else if( strcmp(name+PREFIX_LENGTH,"eth3")==0 ) {
+        intf->hw_id = INTF3;
+        intf_num = 3;
+    } else {
+        debug_println( "Unknown interface name: %s. Setting hw_id to interface number.\n", name );
+        intf->hw_id = router->num_interfaces;
+    }
+    if (intf_num != -1) {
+        intf->hw_fd = sr_cpu_init_intf_socket(intf_num)  // (router name isn't used in this version)
+    }
     // initialize the lock to ensure only one write per interface at a time
     pthread_mutex_init( &intf->hw_lock, NULL );
 #endif
