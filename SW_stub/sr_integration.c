@@ -65,7 +65,7 @@ void sr_integ_hw_setup( struct sr_instance* sr ) {
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_RD_ADDR, i);
         readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, ip);
         
-        debug_println("ip=%04X, read_ip=%04X", router->interface[i].ip, *ip);
+        debug_println("ip=%04X, read_ip=%04X", ntohs(router->interface[i].ip), *ip);
         assert(*ip == ntohs(router->interface[i].ip));
     }
     free(ip);
