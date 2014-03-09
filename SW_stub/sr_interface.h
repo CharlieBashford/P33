@@ -25,6 +25,7 @@ typedef struct {
     
     
 #if defined _CPUMODE_
+#   define PREFIX_LENGTH 3   /* length of "rx-" prefix in bytes */
 #   define INTF0 0x02
 #   define INTF1 0x08
 #   define INTF2 0x20

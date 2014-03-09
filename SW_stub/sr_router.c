@@ -1352,17 +1352,21 @@ void router_add_interface( router_t* router,
     
     int intf_num = -1;
     // set pretty hw_id
-    if(      strcmp(name,"eth0")==0 ) {
+    if( strcmp(name+PREFIX_LENGTH,"eth0")==0 ) {
         intf->hw_id = INTF0;
+        strcpy(intf->name,"nf0");
         intf_num = 0;
-    } else if( strcmp(name,"eth1")==0 ) {
+    } else if( strcmp(name+PREFIX_LENGTH,"eth1")==0 ) {
         intf->hw_id = INTF1;
+        strcpy(intf->name,"nf1");
         intf_num = 1;
-    } else if( strcmp(name,"eth2")==0 ) {
+    } else if( strcmp(name+PREFIX_LENGTH,"eth2")==0 ) {
         intf->hw_id = INTF2;
+        strcpy(intf->name,"nf2");
         intf_num = 2;
-    } else if( strcmp(name,"eth3")==0 ) {
+    } else if( strcmp(name+PREFIX_LENGTH,"eth3")==0 ) {
         intf->hw_id = INTF3;
+        strcpy(intf->name,"nf3");
         intf_num = 3;
     } else {
         debug_println( "Unknown interface name: %s. Setting hw_id to interface number.\n", name );
