@@ -259,7 +259,7 @@ bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t d
         if (router_lookup_interface_via_ip(get_router(), dest)) {
             char dest_str[STRLEN_IP];
             ip_to_string(dest_str, dest);
-            printf("ERROR: Trying to send ARP request for own interface %s!", dest_str);
+            debug_println("ERROR: Trying to send ARP request for own interface %s!", dest_str);
             exit(-1);
         }
         if (entry == NULL || (get_time() - entry->time) > 15000) {
