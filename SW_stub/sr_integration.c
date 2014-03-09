@@ -59,12 +59,12 @@ void sr_integ_hw_setup( struct sr_instance* sr ) {
     uint32_t *ip = malloc(sizeof(uint32_t));
     unsigned i;
     for (i = 0; i < router->num_interfaces; i++) {
-        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, ntohs(router->interface[i].ip));
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_WR_ADDR, i);
-        
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, ntohs(router->interface[i].ip));
         
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_RD_ADDR, i);
         readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, ip);
+        
         debug_println("ip=%04X, read_ip=%04X", router->interface[i].ip, ip);
         assert(*ip == ntohs(router->interface[i].ip));
     }
