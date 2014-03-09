@@ -1311,6 +1311,48 @@ interface_t* router_lookup_interface_via_name( router_t* router,
     return NULL;
 }
 
+void setup_interface_registers( router_t* router, int intf_num) {
+    interface_t *intf = &router->interface[intf_num];
+    uint32_t low = (intf->mac.octet[1] << 24) + (intf->mac.octet[1] << 16) + (intf->mac.octet[1] << 8) + intf->mac.octet[0];
+    uint32_t high = (intf->mac.octet[1] << 8) + intf->mac.octet[0];
+    uint32_t *low_p = malloc(sizeof(uint32_t));
+    uint32_t *high_p = malloc(sizeof(uint32_t));
+    
+    if (intf_num == 0) {
+        writeReg(intf->hw_fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_0_LOW, low);
+        writeReg(intf->hw_fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_0_HIGH, high);
+        
+        readReg(intf->hw_fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_0_LOW, low_p);
+        readReg(intf->hw_fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_0_HIGH, high_p);
+    } else if (intf_num == 1) {
+        writeReg(intf->hw_fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_1_LOW, low);
+        writeReg(intf->hw_fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_1_HIGH, high);
+        
+        readReg(intf->hw_fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_1_LOW, low_p);
+        readReg(intf->hw_fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_1_HIGH, high_p);
+    } else if (intf_num == 2) {
+        writeReg(intf->hw_fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_2_LOW, low);
+        writeReg(intf->hw_fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_2_HIGH, high);
+        
+        readReg(intf->hw_fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_2_LOW, low_p);
+        readReg(intf->hw_fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_2_HIGH, high_p);
+    } else if (intf_num == 3) {
+        writeReg(intf->hw_fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_3_LOW, low);
+        writeReg(intf->hw_fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_3_HIGH, high);
+    
+        readReg(intf->hw_fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_3_LOW, low_p);
+        readReg(intf->hw_fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_3_HIGH, high_p);
+    }
+    
+    assert(*low_p == low);
+    assert(*high_p == high);
+    
+    debug_println("low_p=%04X high_p=%04X", low, high);
+    
+    free(low_p);
+    free(high_p);
+}
+
 void router_add_interface( router_t* router,
                            const char* name,
                            addr_ip_t ip, addr_ip_t mask, addr_mac_t mac ) {
@@ -1351,6 +1393,7 @@ void router_add_interface( router_t* router,
     debug_println("*******iface %s (check the name!)\n", name);
     
     int intf_num = -1;
+    
     // set pretty hw_id
     if( strcmp(name+PREFIX_LENGTH,"eth0")==0 ) {
         intf->hw_id = INTF0;
@@ -1372,9 +1415,13 @@ void router_add_interface( router_t* router,
         debug_println( "Unknown interface name: %s. Setting hw_id to interface number.\n", name );
         intf->hw_id = router->num_interfaces;
     }
+    
     if (intf_num != -1) {
         intf->hw_fd = sr_cpu_init_intf_socket(intf_num);
+        setup_interface_registers(router, intf_num);
     }
+
+    
     // initialize the lock to ensure only one write per interface at a time
     pthread_mutex_init( &intf->hw_lock, NULL );
 #endif
