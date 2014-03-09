@@ -1625,8 +1625,8 @@ void router_add_route( router_t* router, addr_ip_t prefix, addr_ip_t next_hop,
         j = router->num_routes;
     
     route = &router->route[j];
-    char intf_str[500];
-    intf_to_string(interface_p, intf_str, 500);
+    char intf_str[10];
+    intf_to_string(interface_p, intf_str, 10);
     route->prefix = prefix;
     route->next_hop = next_hop;
     route->subnet_mask = subnet_mask;
@@ -1759,7 +1759,7 @@ void router_delete_all_route_entries(router_t *router, bool dynamic) {
     }
     if (dynamic) {
         if (i != 0) { //No dynamics so no need to move.
-            num_replace = i-1;
+            num_replace = i;
 #ifdef _CPUMODE_
             for (j = 0; j < i;  j++) {
                 writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, 0);

@@ -56,8 +56,11 @@ void sr_integ_hw_setup( struct sr_instance* sr ) {
     }
     
     router_t *router = get_router();
-    uint32_t *ip = malloc(sizeof(uint32_t));
     unsigned i;
+    
+#ifdef _CPUMODE_
+    uint32_t *ip = malloc(sizeof(uint32_t));
+    
     for (i = 0; i < router->num_interfaces; i++) {
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, ntohl(router->interface[i].ip));
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_WR_ADDR, i);
@@ -74,11 +77,13 @@ void sr_integ_hw_setup( struct sr_instance* sr ) {
     
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_RD_ADDR, i);
     readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, ip);
+
     
     debug_println("ip=%08X, read_ip=%08X", OSPF_IP, *ip);
     assert(*ip == htonl(OSPF_IP));
 
     free(ip);
+#endif
     
     link_t link[get_router()->num_interfaces];
     for (i = 0; i < router->num_interfaces; i++) {
