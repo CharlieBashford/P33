@@ -162,7 +162,7 @@ struct lsu_ad {
 
 void router_init( router_t* router ) {
 #ifdef _CPUMODE_
-    init_registers(router);
+    //init_registers(router);
     router->nf.device_name = "nf10";
     check_iface( &router->nf );
     if( openDescriptor( &router->nf ) != 0 )
@@ -1349,22 +1349,22 @@ void router_add_interface( router_t* router,
     pthread_mutex_init( &intf->hw_lock, NULL );
 #endif
     
-#ifdef _CPUMODE_ //TODO: Fix!
+#ifdef _CPUMODE_
      // open a socket to talk to the hw on this interface
     debug_println("*******iface %s (check the name!)\n", name);
     
     int intf_num = -1;
     // set pretty hw_id
-    if(      strcmp(name+PREFIX_LENGTH,"eth0")==0 ) {
+    if(      strcmp(name,"eth0")==0 ) {
         intf->hw_id = INTF0;
         intf_num = 0;
-    } else if( strcmp(name+PREFIX_LENGTH,"eth1")==0 ) {
+    } else if( strcmp(name,"eth1")==0 ) {
         intf->hw_id = INTF1;
         intf_num = 1;
-    } else if( strcmp(name+PREFIX_LENGTH,"eth2")==0 ) {
+    } else if( strcmp(name,"eth2")==0 ) {
         intf->hw_id = INTF2;
         intf_num = 2;
-    } else if( strcmp(name+PREFIX_LENGTH,"eth3")==0 ) {
+    } else if( strcmp(name,"eth3")==0 ) {
         intf->hw_id = INTF3;
         intf_num = 3;
     } else {
@@ -1372,7 +1372,7 @@ void router_add_interface( router_t* router,
         intf->hw_id = router->num_interfaces;
     }
     if (intf_num != -1) {
-        intf->hw_fd = sr_cpu_init_intf_socket(intf_num)  // (router name isn't used in this version)
+        intf->hw_fd = sr_cpu_init_intf_socket(intf_num);
     }
     // initialize the lock to ensure only one write per interface at a time
     pthread_mutex_init( &intf->hw_lock, NULL );

@@ -184,7 +184,7 @@ void cli_show_hw() {
     cli_show_hw_route();
 }
 
-void cli_show_hw_about() {
+/*void cli_show_hw_about() {
     char buf[STR_ARP_CACHE_MAX_LEN];
     router_hw_info_to_string( ROUTER, buf, STR_HW_INFO_MAX_LEN );
     cli_send_str( buf );
@@ -197,7 +197,7 @@ void cli_show_hw_intf() {
     char buf[STR_INTFS_HW_MAX_LEN];
     router_intf_hw_to_string( ROUTER, buf, STR_INTFS_HW_MAX_LEN );
     cli_send_str( buf );
-}
+}*/
 
 void cli_show_hw_route() {
 }
