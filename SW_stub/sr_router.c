@@ -1980,7 +1980,7 @@ void router_add_arp_entry( router_t *router, addr_mac_t mac, addr_ip_t ip, bool 
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_LOW, mac_lo(&mac));
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_HIGH, mac_hi(&mac));
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_WR_ADDR, router->num_arp_cache-1);
-    debug_println("Adding arp entry to %d -----------------------------------------------------------------------------------------------------------", router->num_arp_cache-1);
+    debug_println("Adding arp entry  to %d -----------------------------------------------------------------------------------------------------------", router->num_arp_cache-1);
     
 #endif
     
