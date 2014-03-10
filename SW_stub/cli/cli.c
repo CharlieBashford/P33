@@ -294,7 +294,7 @@ void cli_show_ip() {
 }
 
 void cli_show_ip_arp() {
-    cli_send_str("ARP Table:\nIP  \t\tMac\t\tDynamic\t\tTime Since(s)\n");
+    cli_send_str("ARP Table:\nIP  \t\tMac\t\t\tDynamic\tTime Since(s)\n");
     router_t *router = get_router();
     
     unsigned i;
@@ -303,7 +303,7 @@ void cli_show_ip_arp() {
         ip_to_string(ip_str, router->arp_cache[i].ip);
         mac_to_string(mac_str, &router->arp_cache[i].mac);
         char buf[100];
-        sprintf(buf, "%s  \t%s\t%s\t%d\n", ip_str, mac_str, router->arp_cache[i].dynamic? "Yes" : "No", (int)(router->arp_cache[i].time - get_time()));
+        sprintf(buf, "%s  \t%s\t%s\t%d\n", ip_str, mac_str, router->arp_cache[i].dynamic? "Yes" : "No", (int)(get_time() - router->arp_cache[i].time));
         cli_send_str(buf);
     }
 }
