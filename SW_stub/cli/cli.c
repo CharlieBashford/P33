@@ -185,9 +185,23 @@ void cli_show_hw() {
 }
 
 void cli_show_hw_about() {
-    //char buf[STR_ARP_CACHE_MAX_LEN];
-    //router_hw_info_to_string( ROUTER, buf, STR_HW_INFO_MAX_LEN );
-    //cli_send_str( buf );
+    cli_send_str("HW IP Filter Table:\nEntry Num\tIP\n");
+    router_t *router = get_router();
+    
+    unsigned i;
+    for (j = 0; j < 32; j++) {
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_RD_ADDR, j);
+        uint32_t ip;
+        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, &ip);
+        if (ip != 0) {
+            char ip_str[STRLEN_IP];
+            ip_to_string(ip_str, ip);
+            char buf[100];
+            sprintf(buf, "%d 't%s", i, ip_str);
+            cli_send_str(buf);
+        }
+    }
+
 }
 
 addr_mac_t mac_lo_and_hi(uint32_t lo, uint32_t hi) {
