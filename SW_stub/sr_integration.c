@@ -92,7 +92,7 @@ void sr_integ_hw_setup( struct sr_instance* sr ) {
 
     
     debug_println("ip=%08X, read_ip=%08X", OSPF_IP, *ip);
-    assert(*ip == htonl(OSPF_IP));
+    assert(*ip == (OSPF_IP));
 
     free(ip);
 #endif
