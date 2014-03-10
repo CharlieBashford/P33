@@ -938,6 +938,10 @@ void send_LSU_packet(unsigned seq_no) {
 
 void generate_HELLO_thread() {
     router_t *router = get_router();
+    if (!get_router()->use_ospf) {
+        return;
+    }
+    
     double last_sent[router->num_interfaces];
     double last_LSU_send = get_time();
     unsigned seq_no = 0;
@@ -949,56 +953,6 @@ void generate_HELLO_thread() {
         for (i = 0; i < router->num_interfaces; i++) {
             interface_t *intf = &router->interface[i];
             if ((get_time() - last_sent[i]) > intf->helloint*1000) {
-                if (i == 0) {
-                    /*debug_println("Printing HW routing table:");
-                    unsigned j;
-                    for (j = 0; j < 32; j++) {
-#ifdef _CPUMODE_
-                        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_RD_ADDR, j);
-                        uint32_t ip, mask, next_hop, oq;
-                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, &ip);
-                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, &mask);
-                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, &next_hop);
-                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, &oq);
-                        char ip_str[STRLEN_IP], mask_str[STRLEN_IP], next_hop_str[STRLEN_IP];
-                        ip_to_string(ip_str, ip);
-                        ip_to_string(next_hop_str, next_hop);
-                        ip_to_string(mask_str, mask);
-                        debug_println("%s \t%s \t%s   \t%02X", ip_str, next_hop_str, mask_str, oq);
-#endif
-                    }
-                    
-                    debug_println("Printing HW IP Filter:");
-                    
-                    for (j = 0; j < 32; j++) {
-#ifdef _CPUMODE_
-                        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_RD_ADDR, j);
-                        uint32_t ip;
-                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, &ip);
-                        char ip_str[STRLEN_IP];
-                        ip_to_string(ip_str, ip);
-                        debug_println("%s", ip_str);
-#endif
-                    }
-                    
-                    debug_println("Printing HW ARP table:");
-                    
-                    for (j = 0; j < 32; j++) {
-#ifdef _CPUMODE_
-                        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_RD_ADDR, j);
-                        uint32_t ip, low, high;
-                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_IP, &ip);
-                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_LOW, &low);
-                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_HIGH, &high);
-                        char ip_str[STRLEN_IP], low_str[STRLEN_IP], high_str[STRLEN_IP];
-                        ip_to_string(ip_str, ip);
-                        ip_to_string(low_str, low);
-                        ip_to_string(high_str, high);
-                        debug_println("%s %s %s", ip_str, low_str, high_str);
-#endif
-                    }*/
-                
-                }
                 debug_println("Sending HELLO on interface %d.", i);
                 send_HELLO_packet(intf);
                 last_sent[i] = get_time();
@@ -1069,6 +1023,10 @@ void generate_pending_ARP_thread() {
 }
 
 void handle_PWOSPF_packet(packet_info_t *pi) {
+    if (!get_router()->use_ospf) {
+        return;
+    }
+    
     struct ip_hdr *iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
     struct pwospf_hdr *pwhdr = (void *)pi->packet+IPV4_HEADER_OFFSET+IPV4_HEADER_LENGTH;
     if (PWHDR_VER(pwhdr) != 2) {

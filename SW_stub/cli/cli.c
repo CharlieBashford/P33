@@ -189,8 +189,8 @@ void cli_show_hw_about() {
     router_t *router = get_router();
     
     unsigned i;
-    for (j = 0; j < 32; j++) {
-        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_RD_ADDR, j);
+    for (i = 0; i < XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_DST_IP_FILTER_TABLE_DEPTH; i++) {
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_RD_ADDR, i);
         uint32_t ip;
         readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, &ip);
         if (ip != 0) {
@@ -213,7 +213,7 @@ void cli_show_hw_arp() {
     router_t *router = get_router();
     
     unsigned i;
-    for (i = 0; i < 32; i++) {
+    for (i = 0; i < XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_TABLE_DEPTH; i++) {
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_RD_ADDR, i);
         uint32_t ip, low, high;
         readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_IP, &ip);
@@ -274,7 +274,7 @@ void cli_show_hw_route() {
     router_t *router = get_router();
     
     unsigned i;
-    for (i = 0; i < 32; i++) {
+    for (i = 0; i < XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ROUTE_TABLE_DEPTH; i++) {
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_RD_ADDR, i);
         uint32_t ip, mask, next_hop, oq;
 
@@ -533,9 +533,11 @@ void cli_manip_ip_intf_up( gross_intf_t* data ) {
 }
 
 void cli_manip_ip_ospf_down() {
+    get_router()->use_ospf = FALSE;
 }
 
 void cli_manip_ip_ospf_up() {
+    get_router()->use_ospf = TRUE;
 }
 
 void cli_manip_ip_route_add( gross_route_t* data ) { //Could be wrong!!!
@@ -552,7 +554,8 @@ void cli_manip_ip_route_del( gross_route_t* data ) {
 }
 
 void cli_manip_ip_route_purge_all() {
-    get_router()->num_routes = 0; //BAD!
+    router_delete_all_route_entries(get_router(), TRUE);
+    router_delete_all_route_entries(get_router(), FALSE);
 }
 
 void cli_manip_ip_route_purge_dyn() {
