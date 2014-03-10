@@ -922,6 +922,7 @@ void generate_HELLO_thread() {
             interface_t *intf = &router->interface[i];
             if ((get_time() - last_sent[i]) > intf->helloint*1000) {
                 if (i == 0) {
+                    debug_println("Printing HW routing table:");
                     unsigned j;
                     for (j = 0; j < 32; j++) {
 #ifdef _CPUMODE_
