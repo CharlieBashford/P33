@@ -950,7 +950,7 @@ void generate_HELLO_thread() {
             interface_t *intf = &router->interface[i];
             if ((get_time() - last_sent[i]) > intf->helloint*1000) {
                 if (i == 0) {
-                    debug_println("Printing HW routing table:");
+                    /*debug_println("Printing HW routing table:");
                     unsigned j;
                     for (j = 0; j < 32; j++) {
 #ifdef _CPUMODE_
@@ -996,7 +996,7 @@ void generate_HELLO_thread() {
                         ip_to_string(high_str, high);
                         debug_println("%s %s %s", ip_str, low_str, high_str);
 #endif
-                    }
+                    }*/
                 
                 }
                 debug_println("Sending HELLO on interface %d.", i);
