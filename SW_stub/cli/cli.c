@@ -195,7 +195,7 @@ addr_mac_t mac_lo_and_hi(uint32_t lo, uint32_t hi) {
 }
 
 void cli_show_hw_arp() {
-    cli_send_str("ARP Table:\nIP  \tMac\n");
+    cli_send_str("ARP Table:\nEntry Num\tIP  \tMac\n");
     router_t *router = get_router();
     
     unsigned i;
@@ -207,20 +207,52 @@ void cli_show_hw_arp() {
         readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_HIGH, &high);
         if (ip != 0 || low != 0 || high != 0) {
             char ip_str[STRLEN_IP], mac_str[STRLEN_MAC];
-            ip_to_string(ip_str, ip);
+            ip_to_string(ip_str, htonl(ip));
             addr_mac_t mac = mac_lo_and_hi(low, high);
             mac_to_string(mac_str, &mac);
             char buf[100];
-            sprintf(buf, "%s  \t%s\n", ip_str, mac_str);
+            sprintf(buf, "i \t\t%s  \t%s\n", ip_str, mac_str);
             cli_send_str(buf);
         }
     }
 }
 
 void cli_show_hw_intf() {
-    //char buf[STR_INTFS_HW_MAX_LEN];
-    //router_intf_hw_to_string( ROUTER, buf, STR_INTFS_HW_MAX_LEN );
-    //cli_send_str( buf );
+    cli_send_str("Interface Table:\nInterface  \tMac\n");
+    router_t *router = get_router();
+    
+    char mac_str[STRLEN_MAC];
+    char buf[100];
+    addr_mac_t mac;
+    uint32_t low, high;
+    
+    readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_0_LOW, &low);
+    readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_0_HIGH, &high);
+    mac = mac_lo_and_hi(low, high);
+    mac_to_string(mac_str, &mac);
+    sprintf(buf, "%d  \t%s\n", 0, mac_str);
+    cli_send_str(buf);
+    
+    readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_1_LOW, &low);
+    readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_1_HIGH, &high);
+    mac = mac_lo_and_hi(low, high);
+    mac_to_string(mac_str, &mac);
+    sprintf(buf, "%d  \t%s\n", 0, mac_str);
+    cli_send_str(buf);
+    
+    readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_2_LOW, &low);
+    readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_2_HIGH, &high);
+    mac = mac_lo_and_hi(low, high);
+    mac_to_string(mac_str, &mac);
+    sprintf(buf, "%d  \t%s\n", 0, mac_str);
+    cli_send_str(buf);
+    
+    readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_3_LOW, &low);
+    readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_3_HIGH, &high);
+    mac = mac_lo_and_hi(low, high);
+    mac_to_string(mac_str, &mac);
+    sprintf(buf, "%d  \t%s\n", 0, mac_str);
+    cli_send_str(buf);
 }
 
 void cli_show_hw_route() {
