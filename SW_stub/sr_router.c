@@ -1379,9 +1379,9 @@ interface_t* router_lookup_interface_via_name( router_t* router,
 #ifdef _CPUMODE_
 void setup_interface_registers( router_t* router, int intf_num) {
     interface_t *intf = &router->interface[intf_num];
-    uint32_t low = (intf->mac.octet[3] << 24) + (intf->mac.octet[4] << 16) + (intf->mac.octet[5] << 8) + intf->mac.octet[6];
-    uint32_t high = (intf->mac.octet[0] << 8) + intf->mac.octet[1];
-    debug_println("low=-%08X high=%08X", low, high);
+    uint32_t low = (intf->mac.octet[2] << 24) | (intf->mac.octet[3] << 16) | (intf->mac.octet[4] << 8) | intf->mac.octet[5];
+    uint32_t high = (intf->mac.octet[0] << 8) | intf->mac.octet[1];
+    debug_println("low=%08X high=%08X", low, high);
     uint32_t *low_p = malloc(sizeof(uint32_t));
     uint32_t *high_p = malloc(sizeof(uint32_t));
     
