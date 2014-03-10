@@ -313,6 +313,18 @@ void cli_show_ip_arp() {
 }
 
 void cli_show_ip_intf() {
+    cli_send_str("Interface Table:\nNum\tMac\n");
+    router_t *router = get_router();
+    
+    char mac_str[STRLEN_MAC];
+    char buf[100];
+    
+    unsigned i;
+    for (i = 0; i < router->num_interfaces; i++) {
+        mac_to_string(mac_str, &router->interface[i].mac);
+        sprintf(buf, "%d  \t%s\n", i, mac_str);
+        cli_send_str(buf);
+    }
 }
 
 void cli_show_ip_route() {
