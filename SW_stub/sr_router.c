@@ -173,6 +173,8 @@ void router_init( router_t* router ) {
     
     router->num_interfaces = 0;
     router->num_routes = 0;
+    router->num_arp_cache = 0;
+    router->num_pending_arp = 0;
     router->lsuint = 30;
     router->added_links = FALSE;
 
@@ -181,6 +183,7 @@ void router_init( router_t* router ) {
     pthread_mutex_init( &router->intf_lock, NULL );
     pthread_mutex_init( &router->route_table_lock, NULL );
     pthread_mutex_init( &router->arp_cache_lock, NULL );
+    pthread_mutex_init( &router->pending_arp_lock, NULL);
 
 #ifndef _THREAD_PER_PACKET_
     debug_println( "Initializing the router work queue with %u worker threads",
@@ -220,34 +223,6 @@ struct output_packet {
     int len;
 };
 
-void wait_for_arp_reply(struct output_packet *output) {
-    printf("Created thread waiting for arp reply!\n");
-    router_t *router = get_router();
-    int ARP_cache_size;
-    int attemptsLeft = 5;
-    bool found = FALSE;
-    while (attemptsLeft > 0) {
-        ARP_cache_size = router->num_arp_cache;
-        send_ARP_request(output->dest);
-        double time = get_time();
-        while (ARP_cache_size == router->num_arp_cache && (get_time() - time) < 1000) { };
-        if (router_find_arp_entry(get_router(), output->dest) != NULL) {
-            found = TRUE;
-            break;
-        }
-        attemptsLeft--;
-    }
-    if (found) {
-        send_packet(output->payload, output->src, output->dest, output->len, FALSE, FALSE);
-    } else {
-        packet_info_t *pi = malloc(sizeof(packet_info_t)); //TODO: Free!
-        pi->packet = malloc(output->len+14);
-        memcpy(pi->packet+14, output->payload, output->len);
-        pi->len = output->len;
-        handle_not_repsponding_to_arp(pi);
-    }
-}
-
 bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t dest, int len, bool is_arp_packet, bool is_hello_packet) {
     addr_mac_t src_mac = intf->mac;
 
@@ -267,12 +242,21 @@ bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t d
                 router_delete_arp_entry(get_router(), dest);
             }
             printf("Couldn't find ip address in arp cache or is too old.\n");
-            struct output_packet *output = malloc_or_die(sizeof(struct output_packet));
-            output->payload = payload;
-            output->src = src;
-            output->dest = dest;
-            output->len = len;
-            sys_thread_new((void *)wait_for_arp_reply, output);
+            
+            pthread_mutex_lock(&get_router()->pending_arp_lock);
+            
+            send_ARP_request(dest, 1);
+
+            pending_arp_entry_t *pending_arp_entry = &get_router()->pending_arp[get_router()->num_pending_arp];
+            pending_arp_entry->ip = dest;
+            pending_arp_entry->src = src;
+            pending_arp_entry->payload = payload;
+            pending_arp_entry->len = len;
+            pending_arp_entry->num_sent = 1;
+            
+            get_router()->num_pending_arp += 1;
+            
+            pthread_mutex_unlock(&get_router()->pending_arp_lock);
             return 0;
         }
         dest_mac = entry->mac;
@@ -318,10 +302,10 @@ bool send_packet(byte *payload, uint32_t src, uint32_t dest, int len, bool is_ar
     return send_packet_intf(target_intf, payload, src, dest, len, is_arp_packet, is_hello_packet);
 }
 
-void send_ARP_request(addr_ip_t ip) {
+void send_ARP_request(addr_ip_t ip, int num) {
     char ip_str[16];
     ip_to_string(ip_str, ip);
-    printf("Sending an ARP request to %s:\n", ip_str);
+    printf("Sending an ARP request (number %d) to %s:\n", num, ip_str);
     
     byte *packet = malloc(28*sizeof(byte));     //TODO: Free!
     struct arp_hdr *arhdr = (void *)packet;
@@ -389,6 +373,30 @@ void handle_ARP_packet(packet_info_t *pi) {
         }
         router_add_arp_entry(router, sender_mac, sender_ip, TRUE); //Save mac address.
 
+        debug_println("about to get lock!");
+        pthread_mutex_lock(&router->pending_arp_lock);
+        
+        debug_println("num_pending_arp=%d", router->num_pending_arp);
+        unsigned i;
+        for (i = 0; i < router->num_pending_arp; i++) {
+            debug_println("i=%d", i);
+            pending_arp_entry_t *pending_arp_entry = &router->pending_arp[i];
+            if (pending_arp_entry->ip == sender_ip) {
+                debug_println("Resending packet in entry %d", i);
+                send_packet(pending_arp_entry->payload, pending_arp_entry->src, pending_arp_entry->ip, pending_arp_entry->len, FALSE, FALSE);
+                unsigned j;
+                for (j = i; j < router->num_pending_arp-1; j++) {
+                    router->pending_arp[j] = router->pending_arp[j+1];
+                }
+                router->num_pending_arp--;
+                if (i != router->num_pending_arp)
+                    i--; //Don't increase i on next go.
+            }
+        }
+        
+        
+        pthread_mutex_unlock(&router->pending_arp_lock);
+        
         
     }
 }
@@ -469,13 +477,15 @@ bool handle_ICMP_packet(packet_info_t *pi) {
     return 0;
 }
 
-void generate_response_ICMP_packet(packet_info_t *pi, int type, int code) {
+bool generate_response_ICMP_packet(packet_info_t *pi, int type, int code) {
     byte *old_packet = malloc(pi->len-14);
     memcpy(old_packet, pi->packet+14, pi->len-14);
+    
     struct ip_hdr *old_iphdr = (void *)old_packet;
     
-    pi->packet = malloc((14+20+36)*sizeof(byte)); //14 for Ethernet header, 20 for IPv4 header and 36 for ICMP time exceeded packet.
-    pi->len = 14+20+36;
+    pi->len = 14+20+36;//14 for Ethernet header, 20 for IPv4 header and 36 for ICMP time exceeded packet.
+    pi->packet = malloc((pi->len)*sizeof(byte));
+    
     struct ip_hdr *iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
 
     IPH_VHLTOS_SET(iphdr, 4, 5, 0); //Set version and IHL.
@@ -484,11 +494,12 @@ void generate_response_ICMP_packet(packet_info_t *pi, int type, int code) {
     IPH_PROTO_SET(iphdr, 1);
 
     addr_ip_t dest = IPH_SRC(old_iphdr);
-    interface_t *source_intf = sr_integ_findsrcintf(dest);
+    addr_ip_t target = sr_integ_findnextip(dest);
+    interface_t *source_intf = sr_integ_findsrcintf(target);
     
     if (source_intf == NULL) {
-        printf("No route to source!\n"); //TODO: ??
-        return;
+        printf("No route to source, dropping packet!\n"); //TODO: ??
+        return 1;
     }
     addr_ip_t source = source_intf->ip;
     
@@ -508,6 +519,8 @@ void generate_response_ICMP_packet(packet_info_t *pi, int type, int code) {
     memcpy(icmp_packet+ICMP_TIME_EX_IP_HEADER_OFFSET, old_packet, IPV4_HEADER_LENGTH + 8);
     ICMPH_CHKSUM_SET(icmp_hdr, 0);
     ICMPH_CHKSUM_SET(icmp_hdr, htons(calc_checksum(icmp_packet, pi->len-IPV4_HEADER_OFFSET-IPV4_HEADER_LENGTH)));
+    
+    return 0;
 }
 
 void handle_TCP_packet(packet_info_t *pi) {
@@ -516,18 +529,33 @@ void handle_TCP_packet(packet_info_t *pi) {
     printf("Called sr_transport_input\n");
 }
 
-void handle_not_repsponding_to_arp(packet_info_t *pi) {
+void handle_not_repsponding_to_arp(byte *payload, unsigned len) {
     printf("Not responding to arp:\n");
-    //Reverse soruce and destination again.
-    struct ip_hdr *iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
-    swap_bytes(&IPH_SRC(iphdr), &IPH_DEST(iphdr), 4);
     
-    generate_response_ICMP_packet(pi, 3, 1);
+    packet_info_t *pi = malloc(sizeof(packet_info_t));
+    pi->packet = payload;
+    pi->len = len;
+    
+    //Reverse soruce and destination again.
+    /*struct ip_hdr *iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
+    swap_bytes(&IPH_SRC(iphdr), &IPH_DEST(iphdr), 4);*/
+    
+    unsigned i;
+    for (i = 0; i < pi->len; i += 2)
+        printf("%02X%02X ", *(pi->packet+i),*(pi->packet+i+1));
+    printf("\n");
+    
+    if (generate_response_ICMP_packet(pi, 3, 1)) return;
     //pi->packet have moved in memory, so re-define.
-    iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
+    struct ip_hdr *iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
     
     IPH_CHKSUM_SET(iphdr, 0);
     IPH_CHKSUM_SET(iphdr, htons(calc_checksum(pi->packet+IPV4_HEADER_OFFSET, 20)));
+    
+    for (i = 0; i < pi->len; i += 2)
+        printf("%02X%02X ", *(pi->packet+i),*(pi->packet+i+1));
+    printf("\n");
+    
     addr_ip_t target_ip = sr_integ_findnextip(IPH_DEST(iphdr));
     char target_ip_str[16];
     ip_to_string(target_ip_str, target_ip);
@@ -539,7 +567,7 @@ void handle_not_repsponding_to_arp(packet_info_t *pi) {
 void handle_no_route_to_host(packet_info_t *pi) {
     printf("No route to host!\n");
     
-    generate_response_ICMP_packet(pi, 3, 0);
+    if (generate_response_ICMP_packet(pi, 3, 0)) return;
     struct ip_hdr *iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
     
     IPH_CHKSUM_SET(iphdr, 0);
@@ -927,23 +955,16 @@ void generate_HELLO_thread() {
                     for (j = 0; j < 32; j++) {
 #ifdef _CPUMODE_
                         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_RD_ADDR, j);
-                        uint32_t *ip = malloc(sizeof(uint32_t));
-                        uint32_t *mask = malloc(sizeof(uint32_t));
-                        uint32_t *next_hop = malloc(sizeof(uint32_t));
-                        uint32_t *oq = malloc(sizeof(uint32_t));
-                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, ip);
-                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, mask);
-                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, next_hop);
-                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, oq);
+                        uint32_t ip, mask, next_hop, oq;
+                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, &ip);
+                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, &mask);
+                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, &next_hop);
+                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, &oq);
                         char ip_str[STRLEN_IP], mask_str[STRLEN_IP], next_hop_str[STRLEN_IP];
-                        ip_to_string(ip_str, *ip);
-                        ip_to_string(next_hop_str, *next_hop);
-                        ip_to_string(mask_str, *mask);
-                        debug_println("%s \t%s \t%s   \t%02X", ip_str, next_hop_str, mask_str, *oq);
-                        free(ip);
-                        free(mask);
-                        free(next_hop);
-                        free(oq);
+                        ip_to_string(ip_str, ip);
+                        ip_to_string(next_hop_str, next_hop);
+                        ip_to_string(mask_str, mask);
+                        debug_println("%s \t%s \t%s   \t%02X", ip_str, next_hop_str, mask_str, oq);
 #endif
                     }
                     
@@ -952,12 +973,11 @@ void generate_HELLO_thread() {
                     for (j = 0; j < 32; j++) {
 #ifdef _CPUMODE_
                         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_RD_ADDR, j);
-                        uint32_t *ip = malloc(sizeof(uint32_t));
-                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, ip);
+                        uint32_t ip;
+                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, &ip);
                         char ip_str[STRLEN_IP];
-                        ip_to_string(ip_str, *ip);
+                        ip_to_string(ip_str, ip);
                         debug_println("%s", ip_str);
-                        free(ip);
 #endif
                     }
                     
@@ -966,20 +986,15 @@ void generate_HELLO_thread() {
                     for (j = 0; j < 32; j++) {
 #ifdef _CPUMODE_
                         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_RD_ADDR, j);
-                        uint32_t *ip = malloc(sizeof(uint32_t));
-                        uint32_t *low = malloc(sizeof(uint32_t));
-                        uint32_t *high = malloc(sizeof(uint32_t));
-                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_IP, ip);
-                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_LOW, low);
-                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_HIGH, high);
+                        uint32_t ip, low, high;
+                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_IP, &ip);
+                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_LOW, &low);
+                        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_HIGH, &high);
                         char ip_str[STRLEN_IP], low_str[STRLEN_IP], high_str[STRLEN_IP];
-                        ip_to_string(ip_str, *ip);
-                        ip_to_string(low_str, *low);
-                        ip_to_string(high_str, *high);
+                        ip_to_string(ip_str, ip);
+                        ip_to_string(low_str, low);
+                        ip_to_string(high_str, high);
                         debug_println("%s %s %s", ip_str, low_str, high_str);
-                        free(ip);
-                        free(low);
-                        free(high);
 #endif
                     }
                 
@@ -1005,6 +1020,7 @@ void generate_HELLO_thread() {
                     }
                     //free(neighbor);
                     //neighbor = NULL;
+                    update_routing_table();
                     send_LSU_packet(seq_no);
                     last_LSU_send = get_time();
                     seq_no++;
@@ -1015,7 +1031,7 @@ void generate_HELLO_thread() {
         }
         if (router->num_database > 0 && (router->added_links || (get_time() - last_LSU_send) > router->lsuint*1000)) {
             debug_println("Expired: %s, Added links: %s", (((get_time() - last_LSU_send) > router->lsuint*1000)? "YES" : "NO"),
-                                                        ((router->added_links)? "YES" : "NO"));
+                          ((router->added_links)? "YES" : "NO"));
             send_LSU_packet(seq_no);
             last_LSU_send = get_time();
             seq_no++;
@@ -1023,6 +1039,32 @@ void generate_HELLO_thread() {
         }
         sleep(1);
         debug_println("HELLO thread sleeping for 1s.");
+    }
+}
+
+void generate_pending_ARP_thread() {
+    router_t *router = get_router();
+    unsigned i;
+    while (TRUE) {
+        pthread_mutex_lock(&router->pending_arp_lock);
+        for (i = 0; i < router->num_pending_arp; i++) {
+            pending_arp_entry_t *pending_arp_entry = &router->pending_arp[i];
+            send_ARP_request(pending_arp_entry->ip, pending_arp_entry->num_sent++);
+            if (pending_arp_entry->num_sent == 5) {
+                debug_println("Not responding to ARP request!");
+                handle_not_repsponding_to_arp(pending_arp_entry->payload, pending_arp_entry->len);
+                unsigned j;
+                for (j = i; j < router->num_pending_arp-1; j++) {
+                    router->pending_arp[j] = router->pending_arp[j+1];
+                }
+                router->num_pending_arp--;
+                if (i != router->num_pending_arp)
+                    i--; //Don't increase i on next go.
+            }
+        }
+        pthread_mutex_unlock(&router->pending_arp_lock);
+        sleep(1);
+        debug_println("Pending ARP thread sleeping for 1s.");
     }
 }
 
@@ -1303,7 +1345,7 @@ void handle_IPv4_packet(packet_info_t *pi) {
         IPH_TTL_DEC(iphdr);
     } else {
         printf("Generating time exceeded packet!\n");
-        generate_response_ICMP_packet(pi, 11, 0);
+        if (generate_response_ICMP_packet(pi, 11, 0)) return;
         iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
     }
     IPH_CHKSUM_SET(iphdr, 0);
@@ -1379,8 +1421,8 @@ interface_t* router_lookup_interface_via_name( router_t* router,
 #ifdef _CPUMODE_
 void setup_interface_registers( router_t* router, int intf_num) {
     interface_t *intf = &router->interface[intf_num];
-    uint32_t low = (intf->mac.octet[2] << 24) | (intf->mac.octet[3] << 16) | (intf->mac.octet[4] << 8) | intf->mac.octet[5];
-    uint32_t high = (intf->mac.octet[0] << 8) | intf->mac.octet[1];
+    uint32_t low = mac_lo(&intf->mac);
+    uint32_t high = mac_hi(&intf->mac);
     debug_println("low=%08X high=%08X", low, high);
     uint32_t *low_p = malloc(sizeof(uint32_t));
     uint32_t *high_p = malloc(sizeof(uint32_t));
@@ -1434,6 +1476,7 @@ void router_add_interface( router_t* router,
     intf->mac = mac;
     intf->enabled = TRUE;
     intf->neighbor_list_head = NULL;
+    intf->helloint = 5;
 
 #ifdef MININET_MODE
     // open a socket to talk to the hw on this interface
@@ -1934,7 +1977,7 @@ void router_add_arp_entry( router_t *router, addr_mac_t mac, addr_ip_t ip, bool 
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_IP, (ip));
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_LOW, low);
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_HIGH, high);
-    writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_WR_ADDR, router->num_arp_cache);
+    writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_WR_ADDR, router->num_arp_cache-1);
     
 #endif
     

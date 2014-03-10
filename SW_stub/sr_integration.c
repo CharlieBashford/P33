@@ -117,7 +117,6 @@ void sr_integ_hw_setup( struct sr_instance* sr ) {
     link_t link[get_router()->num_interfaces];
     for (i = 0; i < router->num_interfaces; i++) {
         interface_t *intf = &router->interface[i];
-        intf->helloint = 5;                                 //Find better place.
         /* Adding neighbor for interface */
         debug_println("Adding new neighbor for intf");
         neighbor_t *neighbor = malloc(sizeof(neighbor_t));
@@ -136,6 +135,7 @@ void sr_integ_hw_setup( struct sr_instance* sr ) {
     
     update_routing_table();
     sys_thread_new((void *)generate_HELLO_thread, NULL);
+    sys_thread_new((void *)generate_pending_ARP_thread, NULL);
 }
 
 /**

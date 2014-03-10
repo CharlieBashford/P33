@@ -190,7 +190,31 @@ void cli_show_hw_about() {
     //cli_send_str( buf );
 }
 
+addr_mac_t mac_lo_and_hi(uint32_t lo, uint32_t hi) {
+    return make_mac_addr((hi & 0xFF00) >> 8, hi & 0x00FF, (lo & 0xFF000000) >> 24, (lo & 0xFF0000) >> 16, (lo & 0xFF00) >> 8, lo & 0xFF);
+}
+
 void cli_show_hw_arp() {
+    cli_send_str("ARP Table:\nIP  \tMac\n");
+    router_t *router = get_router();
+    
+    unsigned i;
+    for (i = 0; i < 32; i++) {
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_RD_ADDR, i);
+        uint32_t ip, low, high;
+        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_IP, &ip);
+        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_LOW, &low);
+        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_HIGH, &high);
+        if (ip != 0 || low != 0 || high != 0) {
+            char ip_str[STRLEN_IP], mac_str[STRLEN_MAC];
+            ip_to_string(ip_str, ip);
+            addr_mac_t mac = mac_lo_and_hi(low, high);
+            mac_to_string(mac_str, &mac);
+            char buf[100];
+            sprintf(buf, "%s  \t%s\n", ip_str, mac_str);
+            cli_send_str(buf);
+        }
+    }
 }
 
 void cli_show_hw_intf() {
@@ -239,10 +263,59 @@ void cli_show_ospf() {
 }
 
 void cli_show_ospf_neighbors() {
+    cli_send_str("Interface\tMAC\t\t\tIP\t\tStatus\n");
+    router_t *router = get_router();
+    
+    unsigned i;
+    for (i = 0; i < router->num_interfaces; i++) {
+        interface_t *intf = &router->interface[i];
+        char buf[200];
+        char mac_str[STRLEN_MAC], ip_str[STRLEN_IP];
+        mac_to_string(mac_str, &intf->mac);
+        ip_to_string(ip_str, intf->ip);
+        sprintf(buf, "%s\t\t%s  \t%s \t%s\n", intf->name, mac_str, ip_str, (intf->enabled? "Up" : "Down"));
+        cli_send_str(buf);
+        if (intf->neighbor_list_head != NULL) {
+            cli_send_str("  Neighbor IP\tNeighbor Rtr ID\tSubnet\t\t\tLast Hello Time\n");
+            
+            neighbor_t *neighbor = intf->neighbor_list_head;
+            while (neighbor != NULL) {
+                char ip_str[STRLEN_IP], router_id_str[STRLEN_IP];
+                ip_to_string(ip_str, neighbor->ip);
+                ip_to_string(router_id_str, neighbor->id);
+                sprintf(buf, "%s\t\t%s  \t \t%f\n", ip_str, router_id_str, neighbor->time_last);
+                cli_send_str(buf);
+                neighbor = neighbor->next_neighbor;
+            }
+            
+            
+        }
+    }
 }
 
 void cli_show_ospf_topo() {
-    
+    router_t *router = get_router();
+    database_entry_t *database_entry;
+    if (router->num_database > 0)
+        cli_send_str("Router ID\tLinks\n");
+    unsigned i,j;
+    for (i = 0; i < router->num_database; i++) {
+        database_entry = &router->database[i];
+        char buf[200];
+        char router_str[16];
+        ip_to_string(router_str, database_entry->router_id);
+        sprintf(buf, "%s \t%d\n", router_str, database_entry->num_links);
+        cli_send_str(buf);
+        cli_send_str(" Router ID\tSubnet\n");
+        for (j = 0; j < database_entry->num_links; j++) {
+            char id_str[16], subnet_str[16];
+            link_t *link = &database_entry->link[j];
+            ip_to_string(id_str, link->router_id);
+            subnet_to_string(subnet_str, link->subnet_no, link->mask);
+            sprintf(buf, " %s \t%s\n", id_str, subnet_str);
+            cli_send_str(buf);
+        }
+    }
 }
 
 #ifndef _VNS_MODE_
@@ -365,7 +438,7 @@ void cli_manip_ip_route_del( gross_route_t* data ) {
 }
 
 void cli_manip_ip_route_purge_all() {
-    get_router()->num_routes = 0;
+    get_router()->num_routes = 0; //BAD!
 }
 
 void cli_manip_ip_route_purge_dyn() {

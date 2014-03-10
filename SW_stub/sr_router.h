@@ -67,11 +67,21 @@ typedef struct database_entry_t {
     unsigned len;
 } database_entry_t;
 
+typedef struct pending_arp_entry_t {
+    addr_ip_t ip;
+    addr_ip_t src;
+    byte *payload;
+    unsigned len;
+    double last_sent;
+    double num_sent;
+} pending_arp_entry_t;
+
 /** max number of interfaces the router max have */
 #define ROUTER_MAX_INTERFACES 5
 #define ROUTER_MAX_ROUTES 100
 #define ROUTER_MAX_ARP_CACHE 100
 #define ROUTER_MAX_DATABASE 100
+#define ROUTER_MAX_PENDING_ARP 100
 
 
 /** router data structure */
@@ -86,6 +96,10 @@ typedef struct router_t {
     ip_mac_t arp_cache[ROUTER_MAX_ARP_CACHE];
     unsigned num_arp_cache;
     pthread_mutex_t arp_cache_lock;
+    pending_arp_entry_t pending_arp[ROUTER_MAX_PENDING_ARP];
+    unsigned num_pending_arp;
+    pthread_mutex_t pending_arp_lock;
+
     
     uint32_t router_id;
     uint32_t area_id;
@@ -187,9 +201,9 @@ bool send_packet(byte *payload, uint32_t src, uint32_t dest, int len, bool is_ar
 
 void send_ping(router_t *router, addr_ip_t dest_ip, addr_ip_t src_ip, uint16_t id, uint16_t count);
 
-void send_ARP_request(addr_ip_t ip);
+void send_ARP_request(addr_ip_t ip, int num);
 
-void handle_not_repsponding_to_arp(packet_info_t *pi);
+void handle_not_repsponding_to_arp(byte *payload, unsigned len);
 
 void handle_no_route_to_host(packet_info_t *pi);
 
@@ -202,6 +216,8 @@ uint8_t *add_IPv4_header(uint8_t* payload,
 void update_routing_table();
 
 void generate_HELLO_thread();
+
+void generate_pending_ARP_thread();
 
 link_t *database_find_link(database_entry_t *database_entry, uint32_t router_id, uint32_t subnet_no);
 
@@ -219,6 +235,7 @@ void router_add_route( router_t* router,
                       addr_ip_t subnet_mask,
                       const char *intf_name,
                       bool dynamic );
+
 
 route_t *router_find_route_entry( router_t *router, addr_ip_t dest, addr_ip_t gw, addr_ip_t mask, const char *intf_name);
 
