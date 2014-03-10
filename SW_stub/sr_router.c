@@ -1797,7 +1797,7 @@ void router_delete_all_route_entries(router_t *router, bool dynamic) {
     if (dynamic) {
         if (i != 0) { //No dynamics so no need to move.
             num_replace = i;
-/*#ifdef _CPUMODE_
+#ifdef _CPUMODE_
             for (j = 0; j < i;  j++) {
                 writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, 0);
                 writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, 0);
@@ -1805,11 +1805,11 @@ void router_delete_all_route_entries(router_t *router, bool dynamic) {
                 writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, 0);
                 writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, router->num_routes-j-1);
             }
-#endif*/
+#endif
             for (j = i; j < router->num_routes; j++) {
                 router->route[j] = router->route[i+j];
                 
-/*#ifdef _CPUMODE_
+#ifdef _CPUMODE_
                 writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, ntohl(router->route[j].prefix));
                 writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, ntohl(router->route[j].subnet_mask));
                 writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, ntohl(router->route[j].next_hop));
@@ -1817,7 +1817,7 @@ void router_delete_all_route_entries(router_t *router, bool dynamic) {
                 uint32_t oq = (router->route[j].next_hop == 0)? router->route[j].interface.hw_id : router->route[j].interface.hw_oq;
                 writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, oq);
                 writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, j);
-#endif*/
+#endif
 
             }
         }
@@ -1826,7 +1826,7 @@ void router_delete_all_route_entries(router_t *router, bool dynamic) {
 
     if (!dynamic) {
         num_replace = router->num_routes - i;
-/*#ifdef _CPUMODE_
+#ifdef _CPUMODE_
         for (j = i; j < router->num_routes;  j++) {
             writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, 0);
             writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, 0);
@@ -1834,10 +1834,10 @@ void router_delete_all_route_entries(router_t *router, bool dynamic) {
             writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, 0);
             writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, j);
         }
-#endif*/
+#endif
     }
     
-#ifdef _CPUMODE_
+/*#ifdef _CPUMODE_
     for (i = 0; i < 32; i++) {
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, 0);
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, 0);
@@ -1845,7 +1845,7 @@ void router_delete_all_route_entries(router_t *router, bool dynamic) {
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, 0);
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, i);
     }
-#endif
+#endif*/
     
     router->num_routes -= num_replace;
     
