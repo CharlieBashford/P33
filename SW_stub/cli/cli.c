@@ -286,6 +286,10 @@ void cli_show_hw_route() {
 }
 #endif
 
+int time_since_s(double time) {
+    return (int)((get_time() - time)/1000 + 0.5);
+}
+
 void cli_show_ip() {
     cli_send_str( "IP State:\n" );
     cli_show_ip_arp();
@@ -303,7 +307,7 @@ void cli_show_ip_arp() {
         ip_to_string(ip_str, router->arp_cache[i].ip);
         mac_to_string(mac_str, &router->arp_cache[i].mac);
         char buf[100];
-        sprintf(buf, "%s  \t%s\t%s\t%d\n", ip_str, mac_str, router->arp_cache[i].dynamic? "Yes" : "No", (int)(get_time() - router->arp_cache[i].time));
+        sprintf(buf, "%s  \t%s\t%s\t%d\n", ip_str, mac_str, router->arp_cache[i].dynamic? "Yes" : "No", time_since_s(router->arp_cache[i].time));
         cli_send_str(buf);
     }
 }
