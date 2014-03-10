@@ -237,25 +237,50 @@ void cli_show_hw_intf() {
     readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_1_HIGH, &high);
     mac = mac_lo_and_hi(low, high);
     mac_to_string(mac_str, &mac);
-    sprintf(buf, "%d  \t%s\n", 0, mac_str);
+    sprintf(buf, "%d  \t%s\n", 1, mac_str);
     cli_send_str(buf);
     
     readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_2_LOW, &low);
     readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_2_HIGH, &high);
     mac = mac_lo_and_hi(low, high);
     mac_to_string(mac_str, &mac);
-    sprintf(buf, "%d  \t%s\n", 0, mac_str);
+    sprintf(buf, "%d  \t%s\n", 2, mac_str);
     cli_send_str(buf);
     
     readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_3_LOW, &low);
     readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_3_HIGH, &high);
     mac = mac_lo_and_hi(low, high);
     mac_to_string(mac_str, &mac);
-    sprintf(buf, "%d  \t%s\n", 0, mac_str);
+    sprintf(buf, "%d  \t%s\n", 3, mac_str);
     cli_send_str(buf);
 }
 
 void cli_show_hw_route() {
+    cli_send_str("Printing HW routing table:\nIP \tGateway \tMask \tOutput Queue");
+    router_t *router = get_router();
+    
+    unsigned j;
+    for (j = 0; j < 32; j++) {
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_RD_ADDR, j);
+        uint32_t ip, mask, next_hop, oq;
+
+        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, &ip);
+        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, &mask);
+        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, &next_hop);
+        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, &oq);
+
+        char ip_str[STRLEN_IP], mask_str[STRLEN_IP], next_hop_str[STRLEN_IP];
+
+        ip_to_string(ip_str, ip);
+        ip_to_string(next_hop_str, next_hop);
+        ip_to_string(mask_str, mask);
+        
+        char buf[200];
+        sprintf(buf, "%s \t%s \t%s   \t%02X", ip_str, next_hop_str, mask_str, oq);
+        cli_send_str(buf);
+    }
+    
+    
 }
 #endif
 
