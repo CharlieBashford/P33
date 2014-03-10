@@ -269,15 +269,17 @@ void cli_show_hw_route() {
         readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, &next_hop);
         readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, &oq);
 
-        char ip_str[STRLEN_IP], mask_str[STRLEN_IP], next_hop_str[STRLEN_IP];
+        if (ip != 0 || mask != 0 || next_hop != 0 || oq != 0) {
+            char ip_str[STRLEN_IP], mask_str[STRLEN_IP], next_hop_str[STRLEN_IP];
 
-        ip_to_string(ip_str, ip);
-        ip_to_string(next_hop_str, next_hop);
-        ip_to_string(mask_str, mask);
-        
-        char buf[200];
-        sprintf(buf, "%s \t%s \t%s   \t%02X\n", ip_str, next_hop_str, mask_str, oq);
-        cli_send_str(buf);
+            ip_to_string(ip_str, htonl(ip));
+            ip_to_string(next_hop_str, htonl(next_hop));
+            ip_to_string(mask_str, htonl(mask));
+            
+            char buf[200];
+            sprintf(buf, "%s \t%s \t%s   \t%02X\n", ip_str, next_hop_str, mask_str, oq);
+            cli_send_str(buf);
+        }
     }
     
     
