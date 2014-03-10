@@ -91,14 +91,14 @@ void sr_integ_hw_setup( struct sr_instance* sr ) {
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, router->interface[i].hw_id);
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, i);
         
-        /*writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, ntohl(router->interface[i].ip));
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, (router->interface[i].ip));
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_WR_ADDR, i);
         
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_RD_ADDR, i);
-        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, ip);*/
+        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, ip);
         
-        /*debug_println("ip=%08X, read_ip=%08X", router->interface[i].ip, *ip);
-        assert(*ip == ntohl(router->interface[i].ip));*/
+        debug_println("ip=%08X, read_ip=%08X", router->interface[i].ip, *ip);
+        assert(*ip == ntohl(router->interface[i].ip));
     }
     
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, (OSPF_IP));
