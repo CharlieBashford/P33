@@ -744,7 +744,7 @@ void update_routing_table() { // TODO:Mutli threading for interface and database
         debug_println("%s \t%s \t%d", subnet_no_str, router_id_str, distance_to_routes[i]);
     }
     
-    router_delete_all_route_entries(router, TRUE);
+    //router_delete_all_route_entries(router, TRUE);
     for (i = 0; i < routes_added; i++) {
         char subnet_no_str[16];
         ip_to_string(subnet_no_str, routes[i]->subnet_no);
@@ -756,7 +756,8 @@ void update_routing_table() { // TODO:Mutli threading for interface and database
             if (*first_router_for_routes[i] == router->router_id) {
                 for (j = 0; j < router->num_interfaces; j++) {
                     if (routes[i]->subnet_no == (router->interface[j].ip & router->interface[j].subnet_mask)) {
-                        router_add_route(router, routes[i]->subnet_no, 0, router->interface[j].subnet_mask, router->interface[j].name, TRUE);
+                        if (router->num_routes == 0)
+                            router_add_route(router, routes[i]->subnet_no, 0, router->interface[j].subnet_mask, router->interface[j].name, TRUE);
                         break;
                     }
                 }
@@ -767,7 +768,8 @@ void update_routing_table() { // TODO:Mutli threading for interface and database
                     while (neighbor != NULL) {
                         debug_println("neighbor->id=%lx, first_router_for_routes[%d]=%s", neighbor->id, i, router_id_str);
                         if (neighbor->id == *first_router_for_routes[i]) {
-                            router_add_route(router, routes[i]->subnet_no, neighbor->ip, routes[i]->mask, router->interface[j].name, TRUE);
+                            if (router->num_routes == 0)
+                                router_add_route(router, routes[i]->subnet_no, neighbor->ip, routes[i]->mask, router->interface[j].name, TRUE);
                             found = TRUE;
                             break;
                         }
