@@ -939,7 +939,7 @@ void generate_HELLO_thread() {
                         ip_to_string(ip_str, *ip);
                         ip_to_string(mask_str, *mask);
                         ip_to_string(next_hop_str, *next_hop);
-                        debug_println("%s \t%s \t%s \t%02X", ip, mask, next_hop, oq);
+                        debug_println("%s \t%s \t%s \t%02X", ip_str, mask_str, next_hop_str, *oq);
                         free(ip);
                         free(mask);
                         free(next_hop);
