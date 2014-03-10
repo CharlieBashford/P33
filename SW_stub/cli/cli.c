@@ -195,7 +195,7 @@ addr_mac_t mac_lo_and_hi(uint32_t lo, uint32_t hi) {
 }
 
 void cli_show_hw_arp() {
-    cli_send_str("ARP Table:\nEntry Num\tIP  \t\tMac\n");
+    cli_send_str("HW ARP Table:\nEntry Num\tIP  \t\tMac\n");
     router_t *router = get_router();
     
     unsigned i;
@@ -218,7 +218,7 @@ void cli_show_hw_arp() {
 }
 
 void cli_show_hw_intf() {
-    cli_send_str("Interface Table:\nNum\tMac\n");
+    cli_send_str("HW Interface Table:\nNum\tMac\n");
     router_t *router = get_router();
     
     char mac_str[STRLEN_MAC];
@@ -256,12 +256,12 @@ void cli_show_hw_intf() {
 }
 
 void cli_show_hw_route() {
-    cli_send_str("HW routing table:\nIP \t\tGateway \tMask \t\t\tOutput Queue\n");
+    cli_send_str("HW Routing Table:\nIP \t\tGateway \tMask \t\t\tOutput Queue\n");
     router_t *router = get_router();
     
-    unsigned j;
-    for (j = 0; j < 32; j++) {
-        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_RD_ADDR, j);
+    unsigned i;
+    for (i = 0; i < 32; i++) {
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_RD_ADDR, i);
         uint32_t ip, mask, next_hop, oq;
 
         readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, &ip);
@@ -281,8 +281,6 @@ void cli_show_hw_route() {
             cli_send_str(buf);
         }
     }
-    
-    
 }
 #endif
 
@@ -328,6 +326,21 @@ void cli_show_ip_intf() {
 }
 
 void cli_show_ip_route() {
+    cli_send_str("Routing Table:\nIP \t\tGateway \tMask \t\t\tInterface\n");
+    router_t *router = get_router();
+    
+    unsigned i;
+    for (i = 0; i < router->num_routes; i++) {
+        char ip_str[STRLEN_IP], mask_str[STRLEN_IP], next_hop_str[STRLEN_IP];
+        
+        ip_to_string(ip_str, router->route[i].prefix);
+        ip_to_string(next_hop_str, router->route[i].next_hop);
+        ip_to_string(mask_str, router->route[i].subnet_mask);
+        
+        char buf[200];
+        sprintf(buf, "%s \t%s \t%s   \t%s\n", ip_str, next_hop_str, mask_str, router->route[i].interface.name);
+        cli_send_str(buf);
+    }
 }
 
 void cli_show_opt() {
