@@ -191,11 +191,11 @@ void cli_show_hw_about() {
 }
 
 addr_mac_t mac_lo_and_hi(uint32_t lo, uint32_t hi) {
-    return make_mac_addr((hi & 0xFF00) >> 8, hi & 0x00FF, (lo & 0xFF000000) >> 24, (lo & 0xFF0000) >> 16, (lo & 0xFF00) >> 8, lo & 0xFF);
+    return make_mac_addr(lo & 0xFF, (lo & 0xFF00) >> 8, (lo & 0xFF0000) >> 16, (lo & 0xFF000000) >> 24, hi & 0x00FF, (hi & 0xFF00) >> 8);
 }
 
 void cli_show_hw_arp() {
-    cli_send_str("ARP Table:\nEntry Num\tIP  \tMac\n");
+    cli_send_str("ARP Table:\nEntry Num\tIP  \t\tMac\n");
     router_t *router = get_router();
     
     unsigned i;
@@ -211,14 +211,14 @@ void cli_show_hw_arp() {
             addr_mac_t mac = mac_lo_and_hi(low, high);
             mac_to_string(mac_str, &mac);
             char buf[100];
-            sprintf(buf, "i \t\t%s  \t%s\n", ip_str, mac_str);
+            sprintf(buf, "%d \t\t%s  \t%s\n", i, ip_str, mac_str);
             cli_send_str(buf);
         }
     }
 }
 
 void cli_show_hw_intf() {
-    cli_send_str("Interface Table:\nInterface  \tMac\n");
+    cli_send_str("Interface Table:\nNum\tMac\n");
     router_t *router = get_router();
     
     char mac_str[STRLEN_MAC];
