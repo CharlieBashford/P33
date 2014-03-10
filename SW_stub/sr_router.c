@@ -1977,8 +1977,8 @@ void router_add_arp_entry( router_t *router, addr_mac_t mac, addr_ip_t ip, bool 
 #ifdef _CPUMODE_
     
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_IP, ntohl(ip));
-    writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_LOW, ntohl(mac_lo(&mac)));
-    writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_HIGH, ntohl(mac_hi(&mac)));
+    writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_LOW, mac_lo(&mac));
+    writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_HIGH, mac_hi(&mac));
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_WR_ADDR, router->num_arp_cache-1);
     
 #endif
@@ -2010,8 +2010,8 @@ bool router_delete_arp_entry( router_t *router, addr_ip_t ip) {
         
         addr_mac_t *mac = &router->arp_cache[j+1].mac;
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_IP, ntohl(router->arp_cache[j+1].ip));
-        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_LOW, ntohl(mac_lo(mac)));
-        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_HIGH, ntohl(mac_hi(mac)));
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_LOW, mac_lo(mac));
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_HIGH, mac_hi(mac));
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_WR_ADDR, j);
         
 #endif
@@ -2079,11 +2079,9 @@ void router_delete_all_arp_entries(router_t *router, bool dynamic) {
     
     for (i = router->num_arp_cache-1; i >= 0; i++) { //Backwards
         addr_mac_t *mac = &router->arp_cache[i].mac;
-        uint32_t low = (mac->octet[3] << 24) + (mac->octet[2] << 16) + (mac->octet[1] << 8) + mac->octet[0];
-        uint32_t high = (mac->octet[6] << 8) + mac->octet[5];
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_IP, ntohl(router->arp_cache[i].ip));
-        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_LOW, ntohl(low));
-        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_HIGH, ntohl(high));
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_LOW, mac_lo(mac));
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_MAC_HIGH, mac_hi(mac));
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_ARP_WR_ADDR, i);
         
     }
