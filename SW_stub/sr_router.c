@@ -1303,14 +1303,14 @@ void handle_IPv4_packet(packet_info_t *pi) {
         return;
     }
     
-    if (ntohs(IPH_LEN(iphdr)) != pi->len-IPV4_HEADER_OFFSET) {
+    /*if (ntohs(IPH_LEN(iphdr)) != pi->len-IPV4_HEADER_OFFSET) {
         unsigned i;
         for (i = 0; i < pi->len; i += 2)
             printf("%02X%02X ", *(pi->packet+i),*(pi->packet+i+1));
         printf("\n");
         printf("Incomplete packet, missing %d bytes, dropping packed!\n", (ntohs(IPH_LEN(iphdr))-(pi->len-IPV4_HEADER_OFFSET)));
         return;
-    }
+    }*/
     
     if (calc_checksum(pi->packet+IPV4_HEADER_OFFSET, 20)) {
         printf("Checksum failed, dropping packet!\n");
