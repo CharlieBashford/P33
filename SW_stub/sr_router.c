@@ -1648,6 +1648,28 @@ void router_add_route( router_t* router, addr_ip_t prefix, addr_ip_t next_hop,
     uint32_t oq = (next_hop == 0)? interface_p->hw_id : interface_p->hw_oq;
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, oq);
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, j);
+    
+    uint32_t *prefix_out = malloc(sizeof(uint32_t));
+    uint32_t *subnet_mask_out = malloc(sizeof(uint32_t));
+    uint32_t *next_hop_out = malloc(sizeof(uint32_t));
+    uint32_t *oq_out = malloc(sizeof(uint32_t));
+    
+    writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, j);
+    readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, prefix_out);
+    readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, subnet_mask_out);
+    readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, next_hop_out);
+    readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, oq_out);
+    
+    assert(*prefix_out == ntohl(prefix));
+    assert(*subnet_mask_out == ntohl(subnet_mask));
+    assert(*next_hop_out == ntohl(next_hop));
+    assert(*oq_out == oq);
+    
+    free(prefix_out);
+    free(subnet_mask_out);
+    free(next_hop_out);
+    free(oq_out);
+    
 #endif
 
     router->num_routes += 1;
