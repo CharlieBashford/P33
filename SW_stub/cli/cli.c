@@ -256,7 +256,7 @@ void cli_show_hw_intf() {
 }
 
 void cli_show_hw_route() {
-    cli_send_str("Printing HW routing table:\nIP \tGateway \tMask \tOutput Queue\n");
+    cli_send_str("Printing HW routing table:\nIP \t\tGateway \tMask \t\t\tOutput Queue\n");
     router_t *router = get_router();
     
     unsigned j;
