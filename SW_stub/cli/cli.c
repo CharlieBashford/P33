@@ -303,7 +303,7 @@ void cli_show_ip_arp() {
         ip_to_string(ip_str, router->arp_cache[i].ip);
         mac_to_string(mac_str, &router->arp_cache[i].mac);
         char buf[100];
-        sprintf(buf, "%d \t\t%s  \t%s\t%s\t%s\t%d\n", ip_str, mac_str, router->arp_cache[i].dynamic? "Yes" : "No", (int)(router->arp_cache[i].time - get_time()));
+        sprintf(buf, "%s  \t%s\t%s\t%d\n", ip_str, mac_str, router->arp_cache[i].dynamic? "Yes" : "No", (int)(router->arp_cache[i].time - get_time()));
         cli_send_str(buf);
     }
 }
