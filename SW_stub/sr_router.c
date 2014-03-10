@@ -925,7 +925,7 @@ void generate_HELLO_thread() {
                     unsigned j;
                     for (j = 0; j < 32; j++) {
 #ifdef _CPUMODE_
-                        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, j);
+                        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_RD_ADDR, j);
                         uint32_t *ip = malloc(sizeof(uint32_t));
                         uint32_t *mask = malloc(sizeof(uint32_t));
                         uint32_t *next_hop = malloc(sizeof(uint32_t));
@@ -1654,7 +1654,7 @@ void router_add_route( router_t* router, addr_ip_t prefix, addr_ip_t next_hop,
     uint32_t *next_hop_out = malloc(sizeof(uint32_t));
     uint32_t *oq_out = malloc(sizeof(uint32_t));
     
-    writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, j);
+    writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_RD_ADDR, j);
     readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, prefix_out);
     readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, subnet_mask_out);
     readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, next_hop_out);
