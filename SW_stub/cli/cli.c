@@ -256,7 +256,7 @@ void cli_show_hw_intf() {
 }
 
 void cli_show_hw_route() {
-    cli_send_str("Printing HW routing table:\nIP \tGateway \tMask \tOutput Queue");
+    cli_send_str("Printing HW routing table:\nIP \tGateway \tMask \tOutput Queue\n");
     router_t *router = get_router();
     
     unsigned j;
@@ -276,7 +276,7 @@ void cli_show_hw_route() {
         ip_to_string(mask_str, mask);
         
         char buf[200];
-        sprintf(buf, "%s \t%s \t%s   \t%02X", ip_str, next_hop_str, mask_str, oq);
+        sprintf(buf, "%s \t%s \t%s   \t%02X\n", ip_str, next_hop_str, mask_str, oq);
         cli_send_str(buf);
     }
     
