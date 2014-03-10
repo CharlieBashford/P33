@@ -936,9 +936,9 @@ void generate_HELLO_thread() {
                         readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, next_hop);
                         readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, oq);
                         char ip_str[STRLEN_IP], mask_str[STRLEN_IP], next_hop_str[STRLEN_IP];
-                        ip_to_string(ip_str, *ip);
-                        ip_to_string(mask_str, *mask);
-                        ip_to_string(next_hop_str, *next_hop);
+                        ip_to_string(ip_str, htons(*ip));
+                        ip_to_string(mask_str, htons(*mask));
+                        ip_to_string(next_hop_str, htons(*next_hop));
                         debug_println("%s \t%s \t%s \t%02X", ip_str, mask_str, next_hop_str, *oq);
                         free(ip);
                         free(mask);
@@ -1803,7 +1803,7 @@ void router_delete_all_route_entries(router_t *router, bool dynamic) {
                 writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, 0);
                 writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, 0);
                 writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, 0);
-                writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, router->num_routes-j);
+                writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, router->num_routes-j-1);
             }
 #endif
             for (j = i; j < router->num_routes; j++) {
