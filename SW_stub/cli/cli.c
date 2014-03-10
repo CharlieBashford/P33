@@ -242,6 +242,7 @@ void cli_show_ospf_neighbors() {
 }
 
 void cli_show_ospf_topo() {
+    
 }
 
 #ifndef _VNS_MODE_

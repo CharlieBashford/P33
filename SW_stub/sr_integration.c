@@ -61,6 +61,12 @@ void sr_integ_hw_setup( struct sr_instance* sr ) {
 #ifdef _CPUMODE_
     uint32_t *ip = malloc(sizeof(uint32_t));
     
+    //Reset ip filter table.
+    for (i = 0; i < XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_DST_IP_FILTER_TABLE_DEPTH; i++) {
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, 0);
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_WR_ADDR, i);
+    }
+    
     for (i = 0; i < router->num_interfaces; i++) {
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, (router->interface[i].ip));
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, (make_ip_addr("255.255.255.255")));
@@ -68,17 +74,17 @@ void sr_integ_hw_setup( struct sr_instance* sr ) {
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, router->interface[i].hw_id);
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, i);
         
-        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, ntohl(router->interface[i].ip));
+        /*writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, ntohl(router->interface[i].ip));
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_WR_ADDR, i);
         
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_RD_ADDR, i);
-        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, ip);
+        readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, ip);*/
         
-        debug_println("ip=%08X, read_ip=%08X", router->interface[i].ip, *ip);
-        assert(*ip == ntohl(router->interface[i].ip));
+        /*debug_println("ip=%08X, read_ip=%08X", router->interface[i].ip, *ip);
+        assert(*ip == ntohl(router->interface[i].ip));*/
     }
     
-    writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, ntohl(OSPF_IP));
+    writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, (OSPF_IP));
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_WR_ADDR, i);
     
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_RD_ADDR, i);
