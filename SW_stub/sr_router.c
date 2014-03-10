@@ -939,6 +939,10 @@ void generate_HELLO_thread() {
                         ip_to_string(mask_str, *mask);
                         ip_to_string(next_hop_str, *next_hop);
                         debug_println("%s \t%s \t%s \t%02X", ip, mask, next_hop, oq);
+                        free(ip);
+                        free(mask);
+                        free(next_hop);
+                        free(oq);
 #endif
                     }
                 
@@ -1592,7 +1596,8 @@ void router_add_route( router_t* router, addr_ip_t prefix, addr_ip_t next_hop,
         die( "Error creating routing table, cannot convert interface name (%s) to valid interface", intf_name );
     
     
-    unsigned i, j;
+    unsigned i = 0;
+    unsigned j;
     if (!dynamic) {
         for (i = 0; i < router->num_routes; i++) {
             if (!dynamic)
