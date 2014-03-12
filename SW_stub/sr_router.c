@@ -1112,6 +1112,14 @@ void handle_PWOSPF_packet(packet_info_t *pi) {
             do {
                 if (current_neighbor->ip == src) {
                     debug_println("Found neighbor, updating last recieved Hello packet time");
+                    database_entry_t *database_entry = router_find_database_entry(get_router(), get_router()->router_id);
+                    unsigned i;
+                    for (i = 0; i < database_entry->num_links; i++) {
+                        if (database_entry->link[i].router_id == PWHDR_ROUTER_ID(pwhdr)) {
+                            database_entry->link[i].time_last = get_time();
+                            break;
+                        }
+                    }
                     current_neighbor->time_last = get_time();
                     updated = TRUE;
                     break;
