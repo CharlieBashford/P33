@@ -133,7 +133,8 @@ void sr_integ_hw_setup( struct sr_instance* sr ) {
     }
     router_add_database_entry(get_router(), get_router()->router_id, link, get_router()->num_interfaces, 0, NULL, 0);
     
-    update_routing_table();
+    if (router->use_ospf)
+        update_routing_table();
     sys_thread_new((void *)generate_HELLO_thread, NULL);
     sys_thread_new((void *)generate_pending_ARP_thread, NULL);
 }
@@ -297,5 +298,5 @@ uint32_t sr_integ_ip_output(uint8_t* payload /* given */,
     
     payload = add_IPv4_header(payload, proto, src, dest, len);
     
-    return send_packet(payload, src, dest, len+20, FALSE, FALSE);
+    return send_packet(payload, src, sr_integ_findnextip(dest), len+20, FALSE, FALSE);
 }

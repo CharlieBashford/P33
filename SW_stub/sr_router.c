@@ -178,7 +178,7 @@ void router_init( router_t* router ) {
     router->lsuint = 30;
     router->added_links = FALSE;
 
-    router->use_ospf = TRUE;
+    router->use_ospf = FALSE;
     
     pthread_mutex_init( &router->intf_lock, NULL );
     pthread_mutex_init( &router->route_table_lock, NULL );
@@ -498,7 +498,10 @@ bool generate_response_ICMP_packet(packet_info_t *pi, int type, int code) {
     interface_t *source_intf = sr_integ_findsrcintf(target);
     
     if (source_intf == NULL) {
-        printf("No route to source, dropping packet!\n"); //TODO: ??
+        char ip_str[STRLEN_IP], target_str[STRLEN_IP];
+        ip_to_string(ip_str, dest);
+        ip_to_string(target_str, target);
+        printf("No route to source %s with target %s, dropping packet!\n", ip_str, target_str);
         return 1;
     }
     addr_ip_t source = source_intf->ip;
@@ -533,12 +536,13 @@ void handle_not_repsponding_to_arp(byte *payload, unsigned len) {
     printf("Not responding to arp:\n");
     
     packet_info_t *pi = malloc(sizeof(packet_info_t));
-    pi->packet = payload;
+    pi->packet = malloc((14+len)*sizeof(byte));
+    memcpy(pi->packet+14, payload, len);
     pi->len = len;
     
     //Reverse soruce and destination again.
-    /*struct ip_hdr *iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
-    swap_bytes(&IPH_SRC(iphdr), &IPH_DEST(iphdr), 4);*/
+    struct ip_hdr *iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
+    swap_bytes(&IPH_SRC(iphdr), &IPH_DEST(iphdr), 4);
     
     unsigned i;
     for (i = 0; i < pi->len; i += 2)
@@ -547,7 +551,7 @@ void handle_not_repsponding_to_arp(byte *payload, unsigned len) {
     
     if (generate_response_ICMP_packet(pi, 3, 1)) return;
     //pi->packet have moved in memory, so re-define.
-    struct ip_hdr *iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
+    iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
     
     IPH_CHKSUM_SET(iphdr, 0);
     IPH_CHKSUM_SET(iphdr, htons(calc_checksum(pi->packet+IPV4_HEADER_OFFSET, 20)));
@@ -938,7 +942,8 @@ void send_LSU_packet(unsigned seq_no) {
 
 void generate_HELLO_thread() {
     router_t *router = get_router();
-    if (!get_router()->use_ospf) {
+    debug_println("Using ospf=%d", router->use_ospf);
+    if (!router->use_ospf) {
         return;
     }
     
@@ -2050,7 +2055,9 @@ void router_delete_all_arp_entries(router_t *router, bool dynamic) {
 }
 
 ip_mac_t *router_find_arp_entry( router_t *router, addr_ip_t ip) {
-    debug_println("Finding arp entry.");    // TODO remove debugging line
+    char ip_str[STRLEN_IP];
+    ip_to_string(ip_str, ip);
+    debug_println("Finding arp entry for %s.", ip_str);
     
     pthread_mutex_lock(&router->arp_cache_lock);
 
