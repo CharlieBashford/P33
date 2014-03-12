@@ -30,11 +30,11 @@ def make_MAC_hdr(src_MAC = None, dst_MAC = None, EtherType = None, **kwargs):
 
 ############################
 # Function: make_IP_hdr
-# Keyword Arguments: src_IP, dst_IP, TTL
+# Keyword Arguments: src_IP, dst_IP, TTL, proto_IP
 # Description: creates and returns a scapy Ether layer
 #              if keyword arguments are not specified, scapy defaults are used
 ############################
-def make_IP_hdr(src_IP = None, dst_IP = None, TTL = None, **kwargs):
+def make_IP_hdr(src_IP = None, dst_IP = None, TTL = None, proto_IP = None, **kwargs):
     hdr = scapy.IP()
     if src_IP:
         hdr[scapy.IP].src = src_IP
@@ -42,6 +42,8 @@ def make_IP_hdr(src_IP = None, dst_IP = None, TTL = None, **kwargs):
         hdr[scapy.IP].dst = dst_IP
     if TTL:
         hdr[scapy.IP].ttl = TTL
+    if proto_IP:
+        hdr[scapy.IP].proto = proto_IP
     return hdr
 
 ############################

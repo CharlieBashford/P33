@@ -38,4 +38,11 @@
 lib proc_common_v3_00_a all
 lib axi_lite_ipif_v1_01_a all
 lib nf10_proc_common_v1_00_a all
-lib nf10_router_output_port_lookup_v1_00_a nf10_router_output_port_lookup verilog
+lib nf10_router_output_port_lookup_v1_00_a nf10_router_output_port_lookup.v verilog
+lib nf10_router_output_port_lookup_v1_00_a eth.v verilog
+lib nf10_router_output_port_lookup_v1_00_a ipv4.v verilog
+lib nf10_router_output_port_lookup_v1_00_a ipv4_arp_lut.v verilog
+lib nf10_router_output_port_lookup_v1_00_a ipv4_fib_lut.v verilog
+lib nf10_router_output_port_lookup_v1_00_a ipv4_local_lut.v verilog
+lib nf10_router_output_port_lookup_v1_00_a magic.v verilog
+lib nf10_router_output_port_lookup_v1_00_a pktstate.v verilog
