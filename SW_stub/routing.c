@@ -7,6 +7,7 @@
 //
 
 #include <stdio.h>
+#include <unistd.h>
 #include "routing.h"
 #include "sr_router.h"
 #include "sr_integration.h"
@@ -159,6 +160,8 @@ void handle_PWOSPF_packet(packet_info_t *pi) {
                     } else if (link->mask != LSUAD_MASK(lsuad)) {
                         changed = TRUE;
                         break;
+                    } else {
+                        link->time_last = get_time();
                     }
                 }
             }
