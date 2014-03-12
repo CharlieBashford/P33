@@ -26,9 +26,26 @@ for i in range(4):
     ethIP.append("192.168.%s.40"%(100+i+7))
     pkt = make_IP_pkt(src_MAC=ethMAC[i], dst_MAC=routerMAC[i],
                       EtherType=0x800, src_IP=ethIP[i],
-                      dst_IP=routerIP[i], xpkts_len=100+i)
-    pkt.time = ((i*(1e-8)) + (1e-6))
+                      dst_IP=routerIP[i], pkts_len=100+i)
+    #pkt.show2()
+    # This generates a new packet
+    #e = pkt/Ether()
+    #e.show()
+    #ip = pkt/Ether()/IP()
+    #ip.show()
+    #ip = pkt/Ether()/IP(proto = 6)
+    #ip.show()
+    #pkt/Ether/IP(proto = 0x07)
+    #ip = pkt/Ether/IP
+    #ip.show()
+    #pkt/Ether(dst_MAC="11:22:33:44:55:66")
+    #pkt.show()
+    # This allows you to pick individual parts of the packet (layers) and change fields
+    #pkt[IP].show()
+    #pkt[IP].proto = 89
+    #pkt[IP].show2()
     #pkt.tuser_sport = 1 << (i * 2);
+    pkt.time = ((i*(1e-8)) + (1e-6))
     pkts.append(pkt)
 
 if isHW() and 1:
