@@ -1302,7 +1302,8 @@ void handle_IPv4_packet(packet_info_t *pi) {
                 break;
             default:
                 printf("Generating protocol unreachable packet!\n");
-                generate_response_ICMP_packet(pi, 3, 2);
+                if (generate_response_ICMP_packet(pi, 3, 2)) return;
+                iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
                 break;
                 
         }
