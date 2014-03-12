@@ -73,6 +73,7 @@
    output                                              IP2Bus_Error,
    
    // -- Register ports
+   // XXX-BZ why not -1 here; lots of warnings.
    output    [NUM_WO_REGS*C_S_AXI_DATA_WIDTH : 0]    wo_regs,
    output    [NUM_RW_REGS*C_S_AXI_DATA_WIDTH : 0]    rw_regs,
    input     [NUM_RO_REGS*C_S_AXI_DATA_WIDTH : 0]    ro_regs
