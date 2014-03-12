@@ -145,9 +145,9 @@ void router_init( router_t* router );
 /** Destroys the router_t data structure. */
 void router_destroy( router_t* router );
 
-bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t dest, int len, bool is_arp_packet, bool is_hello_packet);
-
 bool send_packet(byte *payload, uint32_t src, uint32_t dest, int len, bool is_arp_packet, bool is_hello_packet);
+
+bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t dest, int len, bool is_arp_packet, bool is_hello_packet);
 
 
 /**

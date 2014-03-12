@@ -92,6 +92,19 @@ void router_destroy( router_t* router ) {
 #endif
 }
 
+bool send_packet(byte *payload, uint32_t src, uint32_t dest, int len, bool is_arp_packet, bool is_hello_packet) {
+    interface_t *target_intf = sr_integ_findsrcintf(dest);
+    if (dest != OSPF_IP && target_intf == NULL) {
+        packet_info_t *pi = malloc(sizeof(packet_info_t)); //TODO: Free!
+        pi->packet = malloc(len+14);
+        memcpy(pi->packet+14, payload, len);
+        pi->len = len;
+        handle_no_route_to_host(pi);
+        return 1;
+    }
+    return send_packet_intf(target_intf, payload, src, dest, len, is_arp_packet, is_hello_packet);
+}
+
 bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t dest, int len, bool is_arp_packet, bool is_hello_packet) {
     addr_mac_t src_mac = intf->mac;
 
@@ -158,21 +171,6 @@ bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t d
     
     return 0;
 }
-
-bool send_packet(byte *payload, uint32_t src, uint32_t dest, int len, bool is_arp_packet, bool is_hello_packet) {
-    interface_t *target_intf = sr_integ_findsrcintf(dest);
-    if (dest != OSPF_IP && target_intf == NULL) {
-        packet_info_t *pi = malloc(sizeof(packet_info_t)); //TODO: Free!
-        pi->packet = malloc(len+14);
-        memcpy(pi->packet+14, payload, len);
-        pi->len = len;
-        handle_no_route_to_host(pi);
-        return 1;
-    }
-    return send_packet_intf(target_intf, payload, src, dest, len, is_arp_packet, is_hello_packet);
-}
-
-
 
 void router_handle_packet( packet_info_t* pi ) {
     char ip_str[16];
