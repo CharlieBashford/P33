@@ -243,6 +243,7 @@ bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t d
             }
             printf("Couldn't find ip address in arp cache or is too old.\n");
             
+            debug_println("Waiting to get lock");
             pthread_mutex_lock(&get_router()->pending_arp_lock);
             
             send_ARP_request(dest, 1);
@@ -708,7 +709,7 @@ void update_routing_table() { // TODO:Mutli threading for interface and database
             debug_println("i=%d", i);
             if (current_entry->link[i].router_id != 0) {
                 int pos = router_find_database_entry_position(router, current_entry->link[i].router_id);
-                debug_println("isn't 0, and pos=%d", pos);
+                debug_println("isn't 0, and pos=%d, visited=%d, time=%f", pos, visited[pos], (get_time() - current_entry->link[i].time_last));
                 bool is_static = current_entry->router_id == router->router_id && current_entry->link[i].router_id == 0;
                 if (pos != -1 && !visited[pos] && (((get_time() - current_entry->link[i].time_last) < 3*router->lsuint*1000) || is_static)) { //If not expired
                     debug_println("checking distance: distance[%d]=%d + 1 < %d", current_pos, distance[current_pos], distance[pos]);
@@ -734,6 +735,22 @@ void update_routing_table() { // TODO:Mutli threading for interface and database
         }
     }
     //debug_println("FINISHED INITIAL DJ -------------------------------------------------------");
+    
+    
+    debug_println("Router ID\tDistance\tFirst Router");
+    for (i = 0; i < router->num_database; i++) {
+        char router_id_str[STRLEN_IP], first_router_str[STRLEN_IP];
+        ip_to_string(router_id_str, router->database[i].router_id);
+        
+        if (first_router[i] != NULL)
+            ip_to_string(first_router_str, *first_router[i]);
+        else
+            sprintf(first_router_str, "-------");
+        debug_println("%s \t%d\t%s", router_id_str, distance[i], first_router_str);
+    }
+    
+    
+    
     unsigned distance_to_routes[routes_added];
     uint32_t *first_router_for_routes[routes_added];
     for (i = 0; i < routes_added; i++) {
@@ -747,7 +764,7 @@ void update_routing_table() { // TODO:Mutli threading for interface and database
             link_t *link = &database_entry->link[j];
             bool is_static = database_entry->router_id == router->router_id && link->router_id == 0;
             if (((get_time() - link->time_last) < 3*router->lsuint*1000) || is_static) {
-                char subnet_no_str[16];
+                char subnet_no_str[STRLEN_IP];
                 ip_to_string(subnet_no_str, link->subnet_no);
                 debug_println("finding route for %dth link with subnet_no=%s", j, subnet_no_str);
                 for (k = 0; k < routes_added; k++) {
@@ -767,7 +784,7 @@ void update_routing_table() { // TODO:Mutli threading for interface and database
     
     debug_println("Subnet No\tRouter ID\tDistance");
     for (i = 0; i < routes_added; i++) {
-        char subnet_no_str[16], router_id_str[16];
+        char subnet_no_str[STRLEN_IP], router_id_str[STRLEN_IP];
         ip_to_string(subnet_no_str, routes[i]->subnet_no);
         if (first_router_for_routes[i] != NULL)
             ip_to_string(router_id_str, *first_router_for_routes[i]);
@@ -778,11 +795,11 @@ void update_routing_table() { // TODO:Mutli threading for interface and database
     
     router_delete_all_route_entries(router, TRUE);
     for (i = 0; i < routes_added; i++) {
-        char subnet_no_str[16];
+        char subnet_no_str[STRLEN_IP];
         ip_to_string(subnet_no_str, routes[i]->subnet_no);
         debug_println("%d subnet_no=%s",i, subnet_no_str);
         if (first_router_for_routes[i]) {
-            char router_id_str[16];
+            char router_id_str[STRLEN_IP];
             ip_to_string(router_id_str, *first_router_for_routes[i]);
             debug_println("isset and router_id=%s", router_id_str);
             if (*first_router_for_routes[i] == router->router_id) {
@@ -967,7 +984,7 @@ void generate_HELLO_thread() {
             neighbor_t *previous = NULL;
             while (neighbor != NULL) {
                 if ((get_time() - neighbor->time_last) > 3*intf->helloint*1000 && neighbor->id != 0) {
-                    debug_println("Neighbor timeout, exceeds %ds.", 3*intf->helloint);
+                    debug_println("====================================================================================Neighbor timeout, exceeds %ds.", 3*intf->helloint);
                     if (previous) {
                         previous->next_neighbor = neighbor->next_neighbor;
                     } else {
@@ -1003,15 +1020,19 @@ void generate_HELLO_thread() {
 
 void generate_pending_ARP_thread() {
     router_t *router = get_router();
+    pending_arp_entry_t expiring_arp_entry[router->num_pending_arp];
     unsigned i;
     while (TRUE) {
+        
+        unsigned num_expiring = 0;
+        
         pthread_mutex_lock(&router->pending_arp_lock);
         for (i = 0; i < router->num_pending_arp; i++) {
             pending_arp_entry_t *pending_arp_entry = &router->pending_arp[i];
-            send_ARP_request(pending_arp_entry->ip, pending_arp_entry->num_sent++);
             if (pending_arp_entry->num_sent == 5) {
                 debug_println("Not responding to ARP request!");
-                handle_not_repsponding_to_arp(pending_arp_entry->payload, pending_arp_entry->len);
+                expiring_arp_entry[num_expiring].payload = pending_arp_entry->payload;
+                expiring_arp_entry[num_expiring].ip = pending_arp_entry->ip;
                 unsigned j;
                 for (j = i; j < router->num_pending_arp-1; j++) {
                     router->pending_arp[j] = router->pending_arp[j+1];
@@ -1020,8 +1041,14 @@ void generate_pending_ARP_thread() {
                 if (i != router->num_pending_arp)
                     i--; //Don't increase i on next go.
             }
+            send_ARP_request(pending_arp_entry->ip, pending_arp_entry->num_sent++); //Shouldn't need lock.
         }
         pthread_mutex_unlock(&router->pending_arp_lock);
+        
+        for (i = 0; i < num_expiring; i++) {
+            handle_not_repsponding_to_arp(expiring_arp_entry[i].payload, expiring_arp_entry[i].len);
+        }
+        
         sleep(1);
         debug_println("Pending ARP thread sleeping for 1s.");
     }
@@ -1062,9 +1089,10 @@ void handle_PWOSPF_packet(packet_info_t *pi) {
     
     uint8_t type = PWHDR_TYPE(pwhdr);
     
-    
+    char src_str[STRLEN_IP];
+    ip_to_string(src_str, src);
     if (type == TYPE_HELLO) {
-        debug_println("HELLO packet!");
+        debug_println("HELLO packet from %s!", src_str);
         struct hello_hdr *hehdr = (void *)pi->packet+IPV4_HEADER_OFFSET+IPV4_HEADER_LENGTH+PWOSPF_HEADER_LENGTH;
         if (pi->interface->subnet_mask != HEHDR_SUB_MASK(hehdr) || pi->interface->helloint != ntohs(HEHDR_HELLO_INT(hehdr))) {
             debug_println("Subnet mask or helloint mismatch, dropping packet!");
@@ -1119,7 +1147,7 @@ void handle_PWOSPF_packet(packet_info_t *pi) {
         
         return;
     } else if (type == TYPE_LSU) {
-        debug_println("Link State Update packet!");
+        debug_println("Link State Update packet from %s!", src_str);
         struct lsu_hdr *lshdr = (void *)pi->packet+IPV4_HEADER_OFFSET+IPV4_HEADER_LENGTH+PWOSPF_HEADER_LENGTH;
 
         if (PWHDR_ROUTER_ID(pwhdr) == get_router()->router_id) {

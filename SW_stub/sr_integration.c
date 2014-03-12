@@ -298,5 +298,11 @@ uint32_t sr_integ_ip_output(uint8_t* payload /* given */,
     
     payload = add_IPv4_header(payload, proto, src, dest, len);
     
-    return send_packet(payload, src, sr_integ_findnextip(dest), len+20, FALSE, FALSE);
+    addr_ip_t target = sr_integ_findnextip(dest);
+    char src_str[STRLEN_IP], target_str[STRLEN_IP];
+    ip_to_string(src_str, src);
+    ip_to_string(target_str, target);
+    debug_println("Sending packet to %s via %s", src_str, target_str);
+    
+    return send_packet(payload, src, target, len+20, FALSE, FALSE);
 }
