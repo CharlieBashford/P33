@@ -211,7 +211,7 @@ void handle_PWOSPF_packet(packet_info_t *pi) {
             }
             router_add_database_entry(get_router(), PWHDR_ROUTER_ID(pwhdr), link, num_adverts, LSHDR_SEQ_NO(lshdr), pi->packet, pi->len);
             get_router()->added_links = TRUE;
-            a;
+            update_routing_table();
         }
         //Forward packet.
         if (ntohs(LSHDR_TTL(lshdr)) >= 1) {
