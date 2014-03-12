@@ -23,6 +23,9 @@
 #include "sr_work_queue.h"
 #include "sr_dumper.h"
 #include "lwtcp/lwip/ip.h"
+#include "routing.h"
+#include "arp.h"
+#include "ip.h"
 
 #include <unistd.h>
 void sys_thread_new(void (* thread)(void *arg), void *arg);

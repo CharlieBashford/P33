@@ -145,6 +145,11 @@ void router_init( router_t* router );
 /** Destroys the router_t data structure. */
 void router_destroy( router_t* router );
 
+bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t dest, int len, bool is_arp_packet, bool is_hello_packet);
+
+bool send_packet(byte *payload, uint32_t src, uint32_t dest, int len, bool is_arp_packet, bool is_hello_packet);
+
+
 /**
  * Main entry function for a thread which is to handle the packet_info_t
  * specified by vpacket.  The thread will process the packet and then free the
@@ -192,63 +197,5 @@ interface_t* router_lookup_interface_via_name( router_t* router,
 void router_add_interface( router_t* router,
                           const char* name,
                           addr_ip_t ip, addr_ip_t mask, addr_mac_t mac );
-
-void sr_read_routes_from_file( router_t* router, const char* filename );
-
-ip_mac_t *router_find_arp_entry( router_t *router, addr_ip_t ip);
-
-bool send_packet(byte *payload, uint32_t src, uint32_t dest, int len, bool is_arp_packet, bool is_hello_packet);
-
-void send_ping(router_t *router, addr_ip_t dest_ip, addr_ip_t src_ip, uint16_t id, uint16_t count);
-
-void send_ARP_request(addr_ip_t ip, int num);
-
-void handle_not_repsponding_to_arp(byte *payload, unsigned len);
-
-void handle_no_route_to_host(packet_info_t *pi);
-
-uint8_t *add_IPv4_header(uint8_t* payload,
-                         uint8_t  proto,
-                         uint32_t src, /* nbo */
-                         uint32_t dest, /* nbo */
-                         int len);
-
-void update_routing_table();
-
-void generate_HELLO_thread();
-
-void generate_pending_ARP_thread();
-
-link_t *database_find_link(database_entry_t *database_entry, uint32_t router_id, uint32_t subnet_no);
-
-database_entry_t *router_find_database_entry( router_t* router, uint32_t router_id);
-
-void router_add_link_to_database_entry( router_t *router, database_entry_t *database_entry, link_t *link_to_add);
-
-bool router_remove_link_from_database_entry( router_t *router, database_entry_t *database_entry, uint32_t router_id);
-
-void router_add_database_entry( router_t* router, uint32_t router_id, link_t link[], unsigned num_links, uint16_t seq_no, byte *packet, unsigned len);
-
-void router_add_route( router_t* router,
-                      addr_ip_t prefix,
-                      addr_ip_t next_hop,
-                      addr_ip_t subnet_mask,
-                      const char *intf_name,
-                      bool dynamic );
-
-
-route_t *router_find_route_entry( router_t *router, addr_ip_t dest, addr_ip_t gw, addr_ip_t mask, const char *intf_name);
-
-bool router_delete_route_entry( router_t *router, addr_ip_t dest, addr_ip_t gw, addr_ip_t mask, const char *intf_name);
-
-void router_delete_all_route_entries(router_t *router, bool dynamic);
-
-void router_add_arp_entry( router_t *router, addr_mac_t mac, addr_ip_t ip, bool dynamic);
-
-bool router_delete_arp_entry( router_t *router, addr_ip_t ip);
-
-void router_delete_all_arp_entries(router_t *router, bool dynamic);
-
-uint16_t calc_checksum(byte *header, int len);
 
 #endif /* SR_ROUTER_H */

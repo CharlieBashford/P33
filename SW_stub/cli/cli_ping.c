@@ -10,6 +10,7 @@
 #include "socket_helper.h"       /* writenstr()                       */
 #include "../sr_integration.h"   /* sr_integ_findsrcip()              */
 #include "../sr_thread.h"
+#include "../icmp.h"
 
 /** maximum number of bytes an echo reply may have */
 #define PING_BUF_SIZE (sizeof(hdr_icmp_t) + 40)

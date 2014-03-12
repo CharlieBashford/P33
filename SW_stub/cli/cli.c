@@ -13,6 +13,8 @@
 #include "../sr_base_internal.h" /* struct sr_instance                */
 #include "../sr_common.h"        /* ...                               */
 #include "../sr_router.h"        /* router_*()                        */
+#include "../arp.h"
+#include "../routing.h"
 
 /** whether to shutdown the server or not */
 static bool router_shutdown;
