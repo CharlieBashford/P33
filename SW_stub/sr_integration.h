@@ -15,11 +15,17 @@ struct sr_instance* get_sr();
 router_t* get_router();
 
 int sr_integ_low_level_output( struct sr_instance* sr /* borrowed */,
-                               uint8_t* buf /* borrowed */ ,
-                               unsigned int len,
-                               interface_t* intf );
+                              uint8_t* buf /* borrowed */ ,
+                              unsigned int len,
+                              interface_t* intf );
 
 /** returns the ip of the interface this will be sent via */
 uint32_t sr_integ_findsrcip(uint32_t dest /* nbo */);
-
+interface_t *sr_integ_findsrcintf(uint32_t dest /* nbo */);
+uint32_t sr_integ_ip_output(uint8_t* payload /* given */,
+                            uint8_t  proto,
+                            uint32_t src, /* nbo */
+                            uint32_t dest, /* nbo */
+                            int len);
+uint32_t sr_integ_findnextip(uint32_t dest /* nbo */);
 #endif /* INTEGRATION_H */

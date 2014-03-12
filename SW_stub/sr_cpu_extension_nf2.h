@@ -16,6 +16,8 @@
 
 #ifdef _CPUMODE_
 
+#define ETH_MAX_LEN 14 + 2048
+
 #include "sr_base_internal.h"
 #include "sr_interface.h"
 

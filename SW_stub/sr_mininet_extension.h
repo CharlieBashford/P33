@@ -23,6 +23,7 @@
 #ifdef MININET_MODE
 #ifndef SR_MININET_EXTENSION_H_
 #define SR_MININET_EXTENSION_H_
+int sr_mininet_init_intf_socket_withname ( char* iface_name );
 
 int sr_mininet_init_intf_socket( char* router_name /* name of router, e.g. r0 */, 
 				int interface_index /* index of interface e.g. 0, 1, 2, 3 */ );

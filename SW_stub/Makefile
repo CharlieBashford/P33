@@ -36,7 +36,7 @@ both : pool tpp
 MODE_NETFPGA = -D_CPUMODE_
 MODE_MININET = -DMININET_MODE
 MODE_MANUAL  = -D_MANUAL_MODE_
-MODE = $(MODE_MININET)
+MODE = $(MODE_NETFPGA)
 
 #the next lines control whether to use one thread per packet or a worker pool
 USE_THREAD_POOL       = -DNUM_WORKER_THREADS=1   # use a thread pool w/ this # of workers
@@ -96,7 +96,8 @@ SR_SRCS_MAIN = sr_main.c
 
 SR_SRCS_BASE =  sr_router.c sr_common.c \
 	        sr_interface.c \
-	        sr_work_queue.c
+	        sr_work_queue.c \
+	        ip.c arp.c my_icmp.c routing.c
 
 SR_SRCS = $(SR_SRCS_MAIN) $(SR_SRCS_BASE)
 
