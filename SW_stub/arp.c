@@ -135,7 +135,7 @@ void generate_pending_ARP_thread() {
         pthread_mutex_lock(&router->pending_arp_lock);
         for (i = 0; i < router->num_pending_arp; i++) {
             pending_arp_entry_t *pending_arp_entry = &router->pending_arp[i];
-            if (pending_arp_entry->num_sent == 5) {
+            if (pending_arp_entry->num_sent >= 5) {
                 debug_println("Not responding to ARP request!");
                 expiring_arp_entry[num_expiring].payload = pending_arp_entry->payload;
                 expiring_arp_entry[num_expiring].ip = pending_arp_entry->ip;
