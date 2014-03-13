@@ -149,6 +149,7 @@ bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t d
             }
             
             pthread_mutex_unlock(&get_router()->pending_arp_lock);
+            debug_println("Finished with lock");
             return 0;
         }
         dest_mac = entry->mac;
