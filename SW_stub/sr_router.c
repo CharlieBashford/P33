@@ -127,17 +127,26 @@ bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t d
             
             debug_println("Waiting to get lock");
             pthread_mutex_lock(&get_router()->pending_arp_lock);
-            
-            send_ARP_request(dest, 1);
+            bool found = FALSE;
+            unsigned i;
+            for (i = 0; i < get_router()->num_pending_arp; i++) {
+                if (get_router()->pending_arp[i].ip == dest) {
+                    found = TRUE;
+                    break;
+                }
+            }
+            if (found == FALSE) {
+                send_ARP_request(dest, 1);
 
-            pending_arp_entry_t *pending_arp_entry = &get_router()->pending_arp[get_router()->num_pending_arp];
-            pending_arp_entry->ip = dest;
-            pending_arp_entry->src = src;
-            pending_arp_entry->payload = payload;
-            pending_arp_entry->len = len;
-            pending_arp_entry->num_sent = 1;
-            
-            get_router()->num_pending_arp += 1;
+                pending_arp_entry_t *pending_arp_entry = &get_router()->pending_arp[get_router()->num_pending_arp];
+                pending_arp_entry->ip = dest;
+                pending_arp_entry->src = src;
+                pending_arp_entry->payload = payload;
+                pending_arp_entry->len = len;
+                pending_arp_entry->num_sent = 1;
+                
+                get_router()->num_pending_arp += 1;
+            }
             
             pthread_mutex_unlock(&get_router()->pending_arp_lock);
             return 0;
