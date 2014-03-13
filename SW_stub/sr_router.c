@@ -177,6 +177,10 @@ bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t d
     
     printf("Adding ethernet header: source=%s and dest=%s\n", src_mac_str, dest_mac_str);
     
+    if (intf->enabled == FALSE) {
+        debug_println("SENDING: DROPPING PACKET! Interface %s is disabled.", intf->name);
+        return 0;
+    }
     sr_integ_low_level_output(get_sr(), packet, len+14, intf);
     
     return 0;
@@ -186,6 +190,10 @@ void router_handle_packet( packet_info_t* pi ) {
     char ip_str[16];
     ip_to_string(ip_str, pi->interface->ip);
     printf("-----------New Packet on %s(%s)---------\n", pi->interface->name, ip_str);
+    if (pi->interface->enabled == FALSE) {
+        debug_println("RECIEVING: DROPPING PACKET! Interface %s is disabled.", pi->interface->name);
+        return;
+    }
     
     uint16_t ether_type = (*(pi->packet+12) << 8) + *(pi->packet+13);
     

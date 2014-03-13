@@ -20,7 +20,7 @@ TODO check accuracy of routing table entries
                           eth0:10.0.2.2
                           +======================+         App Server 1
                           |  router #1       (eth1) ====== (h1, 10.0.4.2)
-                          |  r1                  | eth1:10.0.4.1
+                          |  r1          105     | eth1:10.0.4.1
                           +=====(eth0)=====(eth2)+
                                   /          ||    eth2:10.0.6.1
                                  /           ||
@@ -28,7 +28,7 @@ TODO check accuracy of routing table entries
                                /             ||  r0:
                 +============(eth1)==+       ||    eth0: 10.0.1.1
 App Server 0 = (eth0)  router #0     |       ||    eth1: 10.0.2.1
-(h0, 10.0.1.2)  |      r0            |       ||    eth2: 10.0.3.1
+(h0, 10.0.1.2)  |      r0       109  |       ||    eth2: 10.0.3.1
                 +============(eth2)==+       ||
                                \             ||
                                 \            ||
@@ -36,7 +36,7 @@ App Server 0 = (eth0)  router #0     |       ||    eth1: 10.0.2.1
                                   \          ||    eth2:10.0.6.2
                           +=====(eth0)=====(eth2)+
                           |  router #2           | eth1:10.0.5.1
-                          |  r2              (eth1) ====== App Server 2
+                          |  r2         101     (eth1) ====== App Server 2
                           +======================+         (h2, 10.0.5.2)
                           eth0:10.0.3.2
                           

@@ -93,7 +93,7 @@ void handle_IPv4_packet(packet_info_t *pi) {
 }
 
 void handle_TCP_packet(packet_info_t *pi) {
-    printf("Recieved a TCP packet:\n");
+    printf("Recieved a TCP packet:\n");//Look for port
     sr_transport_input(pi->packet+IPV4_HEADER_OFFSET);
     printf("Called sr_transport_input\n");
 }
