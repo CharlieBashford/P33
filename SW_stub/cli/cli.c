@@ -15,6 +15,7 @@
 #include "../sr_router.h"        /* router_*()                        */
 #include "../arp.h"
 #include "../routing.h"
+#include "../policy.h"
 
 /** whether to shutdown the server or not */
 static bool router_shutdown;
@@ -309,6 +310,7 @@ void cli_show_ip() {
     cli_show_ip_arp();
     cli_show_ip_intf();
     cli_show_ip_route();
+    cli_show_ip_policy();
 }
 
 void cli_show_ip_arp() {
@@ -355,6 +357,25 @@ void cli_show_ip_route() {
         
         char buf[200];
         sprintf(buf, "%s \t%s \t%s   \t%s\n", ip_str, next_hop_str, mask_str, router->route[i].interface.name);
+        cli_send_str(buf);
+    }
+}
+
+void cli_show_ip_policy() {
+    cli_send_str("Policy Table:\n Source Subnet \tDest Subnet \tLocal End \tRemote End\tSecret \t\tAlgorithm\n");
+    router_t *router = get_router();
+    
+    unsigned i;
+    for (i = 0; i < router->num_policies; i++) {
+        char src_subnet_str[STRLEN_SUBNET], dest_subnet_str[STRLEN_SUBNET], local_ip_str[STRLEN_IP], remote_ip_str[STRLEN_IP];
+        
+        subnet_to_string(src_subnet_str, router->policy[i].src_ip, router->policy[i].src_mask);
+        subnet_to_string(dest_subnet_str, router->policy[i].dest_ip, router->policy[i].dest_mask);
+        ip_to_string(local_ip_str, router->policy[i].local_end);
+        ip_to_string(remote_ip_str, router->policy[i].remote_end);
+        
+        char buf[200];
+        sprintf(buf, "%s \t%s \t%s \t%s \t%s     \tNone\n", src_subnet_str, dest_subnet_str, local_ip_str, remote_ip_str, router->policy[i].secret);
         cli_send_str(buf);
     }
 }
@@ -542,7 +563,7 @@ void cli_manip_ip_ospf_up() {
     get_router()->use_ospf = TRUE;
 }
 
-void cli_manip_ip_route_add( gross_route_t* data ) { //Could be wrong!!!
+void cli_manip_ip_route_add( gross_route_t* data ) {
     route_t *route_entry = router_find_route_entry(get_router(), data->dest, data->gw, data->mask, data->intf_name);
     if (route_entry == NULL) {
         router_add_route(get_router(), data->dest, data->gw, data->mask, data->intf_name, FALSE);
@@ -568,6 +589,23 @@ void cli_manip_ip_route_purge_dyn() {
 void cli_manip_ip_route_purge_sta() {
     router_delete_all_route_entries(get_router(), FALSE);
     
+}
+
+void cli_manip_ip_policy_add( gross_policy_t* data ) {
+    policy_t *policy = router_find_policy_entry(get_router(), data->src_ip, data->src_mask, data->dest_ip, data->dest_mask, data->local_end, data->remote_end);
+    if (policy == NULL) {
+        router_add_policy(get_router(), data->src_ip, data->src_mask, data->dest_ip, data->dest_mask, data->local_end, data->remote_end, data->secret);
+    } else
+        cli_send_str("Policy entry already exists.");
+}
+
+void cli_manip_ip_policy_del( gross_policy_t* data ) {
+    if (!router_delete_policy_entry(get_router(), data->src_ip, data->src_mask, data->dest_ip, data->dest_mask, data->local_end, data->remote_end))
+        cli_send_str("Policy entry doesn't exist.");
+}
+
+void cli_manip_ip_policy_purge_all() {
+    router_delete_all_policy(get_router());
 }
 
 void cli_date() {

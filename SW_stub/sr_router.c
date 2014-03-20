@@ -58,6 +58,7 @@ void router_init( router_t* router ) {
     router->num_routes = 0;
     router->num_arp_cache = 0;
     router->num_pending_arp = 0;
+    router->num_policies = 0;
     router->lsuint = 30;
     router->added_links = FALSE;
 

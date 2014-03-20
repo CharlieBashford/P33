@@ -49,6 +49,7 @@ gross_object_t gobj;
 gross_arp_t garp;
 gross_intf_t gintf;
 gross_route_t grt;
+gross_policy_t gpol;
 gross_ip_t gip;
 gross_ip_int_t giip;
 gross_option_t gopt;
@@ -60,6 +61,10 @@ gross_option_t gopt;
 #define SETC_INTF_SET(func,name,xip,sm) SETC_INTF(func,name); gintf.ip=xip; gintf.subnet_mask=sm
 #define SETC_RT(func,xdest,xmask) SETC_FUNC1(func); gobj.data=&grt; grt.dest=xdest; grt.mask=xmask
 #define SETC_RT_ADD(func,dest,xgw,mask,intf) SETC_RT(func,dest,mask); grt.gw=xgw; grt.intf_name=intf
+
+#define SETC_POL(func,xsrc_ip,xsrc_mask,xdest_ip,xdest_mask,xlocal_end,xremote_end) SETC_FUNC1(func); gobj.data=&gpol; gpol.src_ip=xsrc_ip; gpol.src_mask=xsrc_mask; gpol.dest_ip=xdest_ip; gpol.dest_mask=xdest_mask; gpol.local_end=xlocal_end; gpol.remote_end=xremote_end
+#define SETC_POL_ADD(func,src_ip,srp_mask,dest_ip,dest_mask,local_end,remote_end,xscrt) SETC_POL(func,src_ip,srp_mask,dest_ip,dest_mask,local_end,remote_end); gpol.secret=xscrt
+
 #define SETC_IP(func,xip) SETC_FUNC1(func); gobj.data=&gip; gip.ip=xip
 #define SETC_IP_INT(func,xip,xn) SETC_FUNC1(func); gobj.data=&giip; giip.ip=xip; giip.count=xn
 #define SETC_OPT(func) SETC_FUNC1(func); gobj.data=&gopt
@@ -89,8 +94,7 @@ static void run_command();
 %token  T_SHOW T_QUESTION T_NEWLINE T_ALL
 
 %token  T_VNS T_USER T_SERVER T_VHOST T_LHOST T_TOPOLOGY
-/*%token  T_POLICY*/
-%token  T_IP T_ROUTE T_INTF T_ARP T_OSPF T_HW T_NEIGHBORS
+%token  T_IP T_ROUTE T_INTF T_ARP T_OSPF T_HW T_NEIGHBORS T_POLICY
 %token  T_ADD T_DEL T_UP T_DOWN T_PURGE T_STATIC T_DYNAMIC T_ABOUT
 %token  T_PING T_TRACE T_HELP T_EXIT T_SHUTDOWN T_FLOOD
 %token  T_SET T_UNSET T_OPTION T_VERBOSE T_DATE
@@ -145,6 +149,8 @@ ShowTypeIP : /* empty: show all */                { SETC_FUNC0(cli_show_ip); }
            | T_INTF TMIorQ                        { HELP(HELP_SHOW_IP_INTF); }
            | T_ROUTE                              { SETC_FUNC0(cli_show_ip_route); }
            | T_ROUTE TMIorQ                       { HELP(HELP_SHOW_IP_ROUTE); }
+           | T_POLICY                             { SETC_FUNC0(cli_show_ip_policy); }
+           | T_POLICY TMIorQ                      { HELP(HELP_SHOW_IP_POLICY); }
            | WrongOrQ                             { HELP(HELP_SHOW_IP); }
            ;
 
@@ -185,6 +191,7 @@ ManipTypeIP : T_ARP ManipTypeIPARP
             | T_INTF ManipTypeIPInterface
             | T_OSPF ManipTypeIPOSPF
             | T_ROUTE ManipTypeIPRoute
+            | T_POLICY ManipTypeIPPolicy
             ;
 
 ManipTypeIPARP : WrongOrQ                         { HELP(HELP_MANIP_IP_ARP); }
@@ -255,6 +262,35 @@ RouteDelOrQ : HelpOrQ                             { HELP(HELP_MANIP_IP_ROUTE_DEL
             | TAV_IP TAV_IP TMIorQ                { HELP(HELP_MANIP_IP_ROUTE_DEL); }
             ;
 
+ManipTypeIPPolicy : WrongOrQ                       { HELP(HELP_MANIP_IP_POLICY); }
+                  | T_ADD PolicyAddOrQ
+                  | T_DEL PolicyDelOrQ
+                  | T_PURGE                        { SETC_FUNC0(cli_manip_ip_policy_purge_all); }
+                  | T_PURGE TMIorQ                 { HELP(HELP_MANIP_IP_POLICY_PURGE_ALL); }
+                  ;
+
+PolicyAddOrQ : HelpOrQ                                                    { HELP(HELP_MANIP_IP_POLICY_ADD); }
+             | {ERR_IP} error                                             { HELP(HELP_MANIP_IP_POLICY_ADD); }
+             | TAV_IP {ERR_IP} error                                      { HELP(HELP_MANIP_IP_POLICY_ADD); }
+             | TAV_IP TAV_IP {ERR_IP} error                               { HELP(HELP_MANIP_IP_POLICY_ADD); }
+             | TAV_IP TAV_IP TAV_IP {ERR_IP} error                        { HELP(HELP_MANIP_IP_POLICY_ADD); }
+             | TAV_IP TAV_IP TAV_IP TAV_IP {ERR_IP} error                 { HELP(HELP_MANIP_IP_POLICY_ADD); }
+             | TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP                  { SETC_POL_ADD(cli_manip_ip_policy_add,$1,$2,$3,$4,$5,$6,""); }
+             | TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_STR          { SETC_POL_ADD(cli_manip_ip_policy_add,$1,$2,$3,$4,$5,$6,$7); }
+             | TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_STR TMIorQ   { HELP(HELP_MANIP_IP_POLICY_ADD); }
+             ;
+
+PolicyDelOrQ : HelpOrQ                                           { HELP(HELP_MANIP_IP_POLICY_DEL); }
+             | {ERR_IP} error                                    { HELP(HELP_MANIP_IP_POLICY_DEL); }
+             | TAV_IP {ERR_IP} error                             { HELP(HELP_MANIP_IP_POLICY_DEL); }
+             | TAV_IP TAV_IP {ERR_IP} error                      { HELP(HELP_MANIP_IP_POLICY_DEL); }
+             | TAV_IP TAV_IP TAV_IP {ERR_IP} error               { HELP(HELP_MANIP_IP_POLICY_DEL); }
+             | TAV_IP TAV_IP TAV_IP TAV_IP {ERR_IP} error        { HELP(HELP_MANIP_IP_POLICY_DEL); }
+             | TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP {ERR_IP} error { HELP(HELP_MANIP_IP_POLICY_DEL); }
+             | TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP         { SETC_POL(cli_manip_ip_policy_del,$1,$2,$3,$4,$5,$6); }
+             | TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TMIorQ  { HELP(HELP_MANIP_IP_POLICY_DEL); }
+             ;
+
 ActionCommand : T_PING ActionPing
               | T_TRACE ActionTrace
               | ActionDate
@@ -304,6 +340,7 @@ ActionHelp : HelpOrQ                              { HELP(HELP_ACTION_HELP); }
            | HelpOrQ T_SHOW T_IP T_ARP            { HELP(HELP_SHOW_IP_ARP); }
            | HelpOrQ T_SHOW T_IP T_INTF           { HELP(HELP_SHOW_IP_INTF); }
            | HelpOrQ T_SHOW T_IP T_ROUTE          { HELP(HELP_SHOW_IP_ROUTE); }
+           | HelpOrQ T_SHOW T_IP T_POLICY         { HELP(HELP_SHOW_IP_POLICY); }
            | HelpOrQ T_SHOW T_OPTION              { HELP(HELP_SHOW_OPT); }
            | HelpOrQ T_SHOW T_OPTION T_VERBOSE    { HELP(HELP_SHOW_OPT_VERBOSE); }
            | HelpOrQ T_SHOW T_OSPF                { HELP(HELP_SHOW_OSPF); }
@@ -331,6 +368,10 @@ ActionHelp : HelpOrQ                              { HELP(HELP_ACTION_HELP); }
            | HelpOrQ T_IP T_ROUTE T_PURGE         { HELP(HELP_MANIP_IP_ROUTE_PURGE_ALL); }
            | HelpOrQ T_IP T_ROUTE T_DYNAMIC       { HELP(HELP_MANIP_IP_ROUTE_PURGE_DYN); }
            | HelpOrQ T_IP T_ROUTE T_STATIC        { HELP(HELP_MANIP_IP_ROUTE_PURGE_STA); }
+           | HelpOrQ T_IP T_POLICY                { HELP(HELP_MANIP_IP_POLICY); }
+           | HelpOrQ T_IP T_POLICY T_ADD          { HELP(HELP_MANIP_IP_POLICY_ADD); }
+           | HelpOrQ T_IP T_POLICY T_DEL          { HELP(HELP_MANIP_IP_POLICY_DEL); }
+           | HelpOrQ T_IP T_POLICY T_PURGE        { HELP(HELP_MANIP_IP_POLICY_PURGE_ALL); }
            | HelpOrQ T_DATE                       { HELP(HELP_ACTION_DATE); }
            | HelpOrQ T_EXIT                       { HELP(HELP_ACTION_EXIT); }
            | HelpOrQ T_PING                       { HELP(HELP_ACTION_PING); }

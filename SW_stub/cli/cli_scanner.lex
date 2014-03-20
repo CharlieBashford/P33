@@ -96,6 +96,7 @@ STRING            ({BEG_STRING}\")
 "neighbors"  { return T_NEIGHBORS; }
 "neighbor"   { return T_NEIGHBORS; }
 "neigh"      { return T_NEIGHBORS; }
+"policy"     { return T_POLICY;    }
 
  /* ********* Manipulation Operations ********** */
 "add"        { return T_ADD;       }

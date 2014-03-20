@@ -97,7 +97,7 @@ SR_SRCS_MAIN = sr_main.c
 SR_SRCS_BASE =  sr_router.c sr_common.c \
 	        sr_interface.c \
 	        sr_work_queue.c \
-	        ip.c arp.c my_icmp.c routing.c
+	        ip.c arp.c my_icmp.c routing.c policy.c
 
 SR_SRCS = $(SR_SRCS_MAIN) $(SR_SRCS_BASE)
 

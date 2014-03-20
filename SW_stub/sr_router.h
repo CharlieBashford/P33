@@ -76,14 +76,16 @@ typedef struct pending_arp_entry_t {
     double num_sent;
 } pending_arp_entry_t;
 
-typedef struct security_route_t {
-    addr_ip_t src;
+typedef struct policy_t {
+    addr_ip_t src_ip;
     addr_ip_t src_mask;
-    addr_ip_t dest;
+    addr_ip_t dest_ip;
     addr_ip_t dest_mask;
-    double secret;
+    addr_ip_t local_end;
+    addr_ip_t remote_end;
+    char *secret;
     unsigned algor;
-} security_route_t;
+} policy_t;
 
 /** max number of interfaces the router max have */
 #define ROUTER_MAX_INTERFACES 5
@@ -91,7 +93,7 @@ typedef struct security_route_t {
 #define ROUTER_MAX_ARP_CACHE 100
 #define ROUTER_MAX_DATABASE 100
 #define ROUTER_MAX_PENDING_ARP 100
-#define ROUTER_MAX_SECURITY_ROUTE 32
+#define ROUTER_MAX_POLICIES 32
 
 
 /** router data structure */
@@ -110,9 +112,9 @@ typedef struct router_t {
     unsigned num_pending_arp;
     pthread_mutex_t pending_arp_lock;
     
-    security_route_t security_routes[ROUTER_MAX_SECURITY_ROUTE];
-    unsigned num_security_routes;
-
+    policy_t policy[ROUTER_MAX_POLICIES];
+    unsigned num_policies;
+    pthread_mutex_t policy_lock;
     
     uint32_t router_id;
     uint32_t area_id;

@@ -76,10 +76,11 @@ show hw route: displays the HW routing table\n" );
               return cli_send_multi_help( fd, "\
 show ip [arp, interface (intf), route (rt),]: display information about the\n\
   router's IP state\n",
-3,
+4,
 HELP_SHOW_IP_ARP,
 HELP_SHOW_IP_INTF,
-HELP_SHOW_IP_ROUTE );
+HELP_SHOW_IP_ROUTE,
+HELP_SHOW_IP_POLICY);
 
            case HELP_SHOW_IP_ARP:
                 return 0==writenstr( fd, "\
@@ -92,6 +93,10 @@ show ip interface: displays the router's interfaces\n" );
            case HELP_SHOW_IP_ROUTE:
                 return 0==writenstr( fd, "\
 show ip route: displays the routing table sorted by longest prefixes first\n" );
+            
+           case HELP_SHOW_IP_POLICY:
+            return 0==writenstr( fd, "\
+show ip policy: displays the policy table\n" );
 
           case HELP_SHOW_OPT:
               return cli_send_multi_help( fd, "\
@@ -155,12 +160,13 @@ show vns vhost: displays the VNS virtual host address\n" );
 
           case HELP_MANIP_IP:
             return cli_send_multi_help( fd, "\
-ip [arp | interface (intf) | ospf | route (rt)] <command>: update the router's state\n",
-4,
+ip [arp | interface (intf) | ospf | route (rt) | policy] <command>: update the router's state\n",
+5,
 HELP_MANIP_IP_ARP,
 HELP_MANIP_IP_INTF,
 HELP_MANIP_IP_OSPF,
-HELP_MANIP_IP_ROUTE );
+HELP_MANIP_IP_ROUTE,
+HELP_MANIP_IP_POLICY );
 
            case HELP_MANIP_IP_ARP:
                return cli_send_multi_help( fd, "\
@@ -254,14 +260,39 @@ ip route purge: remove all routes in the routing table\n",
 2,
 HELP_MANIP_IP_ROUTE_PURGE_DYN,
 HELP_MANIP_IP_ROUTE_PURGE_STA );
-
-             case HELP_MANIP_IP_ROUTE_PURGE_DYN:
-                 return 0==writenstr( fd, "\
-ip route purge <dyn|dynamic>: remove all dynamic routes in the routing table\n" );
-
-             case HELP_MANIP_IP_ROUTE_PURGE_STA:
-                 return 0==writenstr( fd, "\
-ip route purge <sta|static>: remove all static routes in the routing table\n" );
+            
+        case HELP_MANIP_IP_ROUTE_PURGE_DYN:
+            return 0==writenstr( fd, "\
+                                ip route purge <dyn|dynamic>: remove all dynamic routes in the routing table\n" );
+            
+        case HELP_MANIP_IP_ROUTE_PURGE_STA:
+            return 0==writenstr( fd, "\
+                                ip route purge <sta|static>: remove all static routes in the routing table\n" );
+            
+/* POLICY HELP */
+            
+case HELP_MANIP_IP_POLICY:
+    return cli_send_multi_help( fd, "\
+ip policy {add | del | purge} [<options>]: modify the policy table\n",
+                               3,
+                               HELP_MANIP_IP_POLICY_ADD,
+                               HELP_MANIP_IP_POLICY_DEL,
+                               HELP_MANIP_IP_POLICY_PURGE_ALL );
+    
+case HELP_MANIP_IP_POLICY_ADD:
+    return 0==writenstr( fd, "\
+ip policy add <src IP> <src mask IP> <dest IP> <dest mask IP> <secret>: add a policy entry for\n\
+<src IP> with subnet mask <src mask IP> and <dest IP> with subnet mask <dest mask IP> with <secret>\n" );
+    
+case HELP_MANIP_IP_POLICY_DEL:
+    return 0==writenstr( fd, "\
+ip policy del <src IP> <src mask IP> <dest IP> <dest mask IP>: remove a policy entry for <src IP> \n\
+with subnet mask <src mask IP> and <dest IP> with subnet mask <dest mask IP>\n" );
+    
+case HELP_MANIP_IP_POLICY_PURGE_ALL:
+     return 0==writenstr( fd, "\
+ip policy purge: remove all policies in the policy table\n" );
+/* POLICY HELP END */
 
 
         case HELP_ACTION:

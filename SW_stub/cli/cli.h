@@ -43,6 +43,16 @@ typedef struct {
 } gross_route_t;
 
 typedef struct {
+    addr_ip_t src_ip;
+    addr_ip_t src_mask;
+    addr_ip_t dest_ip;
+    addr_ip_t dest_mask;
+    addr_ip_t local_end;
+    addr_ip_t remote_end;
+    const char *secret;
+} gross_policy_t;
+
+typedef struct {
     addr_ip_t ip;
 } gross_ip_t;
 
@@ -107,6 +117,7 @@ void cli_show_ip();
 void cli_show_ip_arp();
 void cli_show_ip_intf();
 void cli_show_ip_route();
+void cli_show_ip_policy();
 
 void cli_show_opt();
 void cli_show_opt_verbose();
@@ -141,6 +152,10 @@ void cli_manip_ip_route_del( gross_route_t* data );
 void cli_manip_ip_route_purge_all();
 void cli_manip_ip_route_purge_dyn();
 void cli_manip_ip_route_purge_sta();
+
+void cli_manip_ip_policy_add( gross_policy_t* data );
+void cli_manip_ip_policy_del( gross_policy_t* data );
+void cli_manip_ip_policy_purge_all();
 
 /* Display the current date and time. */
 void cli_date();
