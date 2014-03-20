@@ -87,7 +87,9 @@ static void run_command();
 
 /* Terminals with no attribute value */
 %token  T_SHOW T_QUESTION T_NEWLINE T_ALL
+
 %token  T_VNS T_USER T_SERVER T_VHOST T_LHOST T_TOPOLOGY
+/*%token  T_POLICY*/
 %token  T_IP T_ROUTE T_INTF T_ARP T_OSPF T_HW T_NEIGHBORS
 %token  T_ADD T_DEL T_UP T_DOWN T_PURGE T_STATIC T_DYNAMIC T_ABOUT
 %token  T_PING T_TRACE T_HELP T_EXIT T_SHUTDOWN T_FLOOD
