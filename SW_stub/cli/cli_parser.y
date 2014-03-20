@@ -15,6 +15,18 @@ static char cmd_buf[CLI_MAX_BUF+2];
 /** number of bytes used in buf */
 static unsigned cmd_blen;
 
+addr_ip_t prefix_to_mask(unsigned prefix) {
+    addr_ip_t addr_ip = 0;
+    if (prefix > 32) {
+        prefix = 32;
+    }
+    while (prefix > 0) {
+        addr_ip |= 1 << (prefix-1);
+        prefix--;
+    }
+    return addr_ip;
+}
+
 /**
  * Manual Error Handler.  If not NULL, then yyerror will not print an error
  * message (the user is manually handling the error).  This points to the error
@@ -64,6 +76,7 @@ gross_option_t gopt;
 
 #define SETC_POL(func,xsrc_ip,xsrc_mask,xdest_ip,xdest_mask,xlocal_end,xremote_end) SETC_FUNC1(func); gobj.data=&gpol; gpol.src_ip=xsrc_ip; gpol.src_mask=xsrc_mask; gpol.dest_ip=xdest_ip; gpol.dest_mask=xdest_mask; gpol.local_end=xlocal_end; gpol.remote_end=xremote_end
 #define SETC_POL_ADD(func,src_ip,srp_mask,dest_ip,dest_mask,local_end,remote_end,xscrt) SETC_POL(func,src_ip,srp_mask,dest_ip,dest_mask,local_end,remote_end); gpol.secret=xscrt
+#define SETC_POL_ADD_PRE(func,src_ip,srp_mask_pre,dest_ip,dest_mask_pre,local_end,remote_end,xscrt) SETC_POL_ADD(func,src_ip,prefix_to_mask(srp_mask_pre),dest_ip,prefix_to_mask(dest_mask_pre),local_end,remote_end)
 
 #define SETC_IP(func,xip) SETC_FUNC1(func); gobj.data=&gip; gip.ip=xip
 #define SETC_IP_INT(func,xip,xn) SETC_FUNC1(func); gobj.data=&giip; giip.ip=xip; giip.count=xn
@@ -98,6 +111,8 @@ static void run_command();
 %token  T_ADD T_DEL T_UP T_DOWN T_PURGE T_STATIC T_DYNAMIC T_ABOUT
 %token  T_PING T_TRACE T_HELP T_EXIT T_SHUTDOWN T_FLOOD
 %token  T_SET T_UNSET T_OPTION T_VERBOSE T_DATE
+
+%token TAV_SLASH
 
 /* Terminals which evaluate to some attribute value */
 %token   <intVal>       TAV_INT
@@ -275,6 +290,7 @@ PolicyAddOrQ : HelpOrQ                                                    { HELP
              | TAV_IP TAV_IP {ERR_IP} error                               { HELP(HELP_MANIP_IP_POLICY_ADD); }
              | TAV_IP TAV_IP TAV_IP {ERR_IP} error                        { HELP(HELP_MANIP_IP_POLICY_ADD); }
              | TAV_IP TAV_IP TAV_IP TAV_IP {ERR_IP} error                 { HELP(HELP_MANIP_IP_POLICY_ADD); }
+             | TAV_IP TAV_SLASH TAV_INT TAV_IP TAV_SLASH TAV_INT TAV_IP TAV_IP  { SETC_POL_ADD(cli_manip_ip_policy_add_prefix,$1,$3,$4,$6,$7,$8,""); }
              | TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP                  { SETC_POL_ADD(cli_manip_ip_policy_add,$1,$2,$3,$4,$5,$6,""); }
              | TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_STR          { SETC_POL_ADD(cli_manip_ip_policy_add,$1,$2,$3,$4,$5,$6,$7); }
              | TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_STR TMIorQ   { HELP(HELP_MANIP_IP_POLICY_ADD); }
