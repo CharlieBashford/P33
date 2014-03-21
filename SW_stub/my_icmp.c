@@ -44,13 +44,13 @@ bool handle_ICMP_packet(packet_info_t *pi) {
 }
 
 bool generate_response_ICMP_packet(packet_info_t *pi, int type, int code) {
-    byte *old_packet = malloc(pi->len-14);
+    byte *old_packet = malloc_or_die(pi->len-14);
     memcpy(old_packet, pi->packet+14, pi->len-14);
     
     struct ip_hdr *old_iphdr = (void *)old_packet;
     
     pi->len = 14+20+36;//14 for Ethernet header, 20 for IPv4 header and 36 for ICMP time exceeded packet.
-    pi->packet = malloc((pi->len)*sizeof(byte));
+    pi->packet = malloc_or_die((pi->len)*sizeof(byte));
     
     struct ip_hdr *iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
     
@@ -94,7 +94,7 @@ bool generate_response_ICMP_packet(packet_info_t *pi, int type, int code) {
 
 void send_ping(router_t *router, addr_ip_t dest_ip, addr_ip_t src_ip, uint16_t id, uint16_t count) {
     int len = IPV4_HEADER_LENGTH+8;
-    byte *payload = malloc(len*sizeof(byte));
+    byte *payload = malloc_or_die(len*sizeof(byte));
     struct ip_hdr *iphdr = (void *)payload;
     IPH_VHLTOS_SET(iphdr, 4, 5, 0);
     IPH_LEN_SET(iphdr, htons(len));

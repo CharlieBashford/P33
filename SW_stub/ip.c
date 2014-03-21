@@ -26,20 +26,37 @@ void handle_IPv4_packet(packet_info_t *pi) {
      printf("%02X%02X ", *(pi->packet+i),*(pi->packet+i+1));
      printf("\n");*/
     
-    if (check_packet(pi)) return;
-    
     struct ip_hdr *iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
+    
+    uint8_t IHL = IPH_HL(iphdr);
+    if (IHL > 5) {
+        printf("Options in IPv4 packet, dropping packet!\n");
+        return;
+    } else if (IHL < 5) {
+        printf("Incomplete packet, dropping packet!\n");
+        return;
+    }
+    
+    /*if (ntohs(IPH_LEN(iphdr)) != pi->len-IPV4_HEADER_OFFSET) {
+     unsigned i;
+     for (i = 0; i < pi->len; i += 2)
+     printf("%02X%02X ", *(pi->packet+i),*(pi->packet+i+1));
+     printf("\n");
+     printf("Incomplete packet, missing %d bytes, dropping packed!\n", (ntohs(IPH_LEN(iphdr))-(pi->len-IPV4_HEADER_OFFSET)));
+     return;
+     }*/
+    
+    if (calc_checksum(pi->packet+IPV4_HEADER_OFFSET, 20)) {
+        printf("Checksum failed, dropping packet!\n");
+        return;
+    }
+    
     char ip_str[16];
     ip_to_string(ip_str, IPH_DEST(iphdr));
     if (router_lookup_interface_via_ip(get_router(), IPH_DEST(iphdr)) || IPH_DEST(iphdr) == OSPF_IP) {
         printf("Packet for router!\n");
         uint8_t protocol = IPH_PROTO(iphdr);
         
-        if (protocol == IP_ENCAP_PROTOCOL) {
-            handle_IP_ENCAP_packet(pi);
-            iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
-            protocol = IPH_PROTO(iphdr);
-        }
         switch (protocol) {
             case ICMP_PROTOCOL:
                 if (handle_ICMP_packet(pi)) return;
@@ -53,6 +70,11 @@ void handle_IPv4_packet(packet_info_t *pi) {
                 break;
             case PWOSPF_PROTOCOL:
                 handle_PWOSPF_packet(pi);
+                return;
+                break;
+            case IP_ENCAP_PROTOCOL:
+            case ESP_PROTOCOL:
+                handle_IP_ENCAP_packet(pi);
                 return;
                 break;
             default:
@@ -79,13 +101,28 @@ void handle_IPv4_packet(packet_info_t *pi) {
     policy_t *policy = router_find_matching_policy_sending(get_router(), IPH_SRC(iphdr), IPH_DEST(iphdr));
     if (policy != NULL) {
         debug_println("Found matching policy! (sending)");
-        pi->packet = add_IPv4_header(pi->packet, 14, IP_ENCAP_PROTOCOL, policy->local_end, policy->remote_end, pi->len);
-        pi->len += 20;
+        unsigned protocol;
+        if (policy->secret == NULL || strlen(policy->secret) == 0) {
+            debug_println("There is no secret, just doing IP tunneling!");
+            protocol = IP_ENCAP_PROTOCOL;
+        } else {
+            debug_println("There is a secret, going to do ESP!");
+            protocol = ESP_PROTOCOL;
+        }
+        pi->packet = add_IPv4_header(pi->packet, IPV4_HEADER_OFFSET, protocol, policy->local_end, policy->remote_end, pi->len);
+        pi->len += IPV4_HEADER_LENGTH;
         iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
-    
+        
+        if (policy->secret != NULL && strlen(policy->secret) != 0) {
+            pi->packet = add_ESP_packet(pi->packet, IPV4_HEADER_OFFSET+IPV4_HEADER_LENGTH, 0, 0, 0, IP_ENCAP_PROTOCOL, 0, pi->len);
+            pi->len += ESP_HEADER_LENGTH + ESP_TAIL_LENGTH; //incl padding
+            iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
+        }
+        
+        IPH_LEN_SET(iphdr, htons(pi->len-IPV4_HEADER_OFFSET));
         IPH_CHKSUM_SET(iphdr, 0);
         IPH_CHKSUM_SET(iphdr, htons(calc_checksum(pi->packet+IPV4_HEADER_OFFSET, 20)));
-     
+        
         free_policy(policy);
     }
     
@@ -96,34 +133,6 @@ void handle_IPv4_packet(packet_info_t *pi) {
     ip_to_string(target_ip_str, target_ip);
     printf("Sending packet to %s via %s\n",  ip_str, target_ip_str);
     send_packet(pi->packet+14, IPH_SRC(iphdr), target_ip, pi->len-14, FALSE, FALSE);
-}
-
-bool check_packet(packet_info_t *pi) {
-    struct ip_hdr *iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
-    
-    uint8_t IHL = IPH_HL(iphdr);
-    if (IHL > 5) {
-        printf("Options in IPv4 packet, dropping packet!\n");
-        return 1;
-    } else if (IHL < 5) {
-        printf("Incomplete packet, dropping packet!\n");
-        return 1;
-    }
-    
-    /*if (ntohs(IPH_LEN(iphdr)) != pi->len-IPV4_HEADER_OFFSET) {
-     unsigned i;
-     for (i = 0; i < pi->len; i += 2)
-     printf("%02X%02X ", *(pi->packet+i),*(pi->packet+i+1));
-     printf("\n");
-     printf("Incomplete packet, missing %d bytes, dropping packed!\n", (ntohs(IPH_LEN(iphdr))-(pi->len-IPV4_HEADER_OFFSET)));
-     return 1;
-     }*/
-    
-    if (calc_checksum(pi->packet+IPV4_HEADER_OFFSET, 20)) {
-        printf("Checksum failed, dropping packet!\n");
-        return 1;
-    }
-    return 0;
 }
 
 void handle_TCP_packet(packet_info_t *pi) {
@@ -145,17 +154,17 @@ uint16_t calc_checksum(byte *header, int len) {
 }
 
 uint8_t *add_IPv4_header(uint8_t* payload, unsigned offset, uint8_t  proto, uint32_t src, uint32_t dest, int len) {
-    printf("Adding IPv4 header.\n");
+    debug_println("Adding IPv4 header.");
     /*unsigned i;
      for (i = 0; i < len; i++)
      printf("(%d %02X) ", i, (int)*(payload+i));
      printf("\n");*/
     
-    uint8_t *ipv4_packet = malloc((IPV4_HEADER_LENGTH+len)*sizeof(uint8_t));
+    uint8_t *ipv4_packet = malloc_or_die((IPV4_HEADER_LENGTH+len)*sizeof(uint8_t));
     struct ip_hdr *iphdr = (void *)ipv4_packet + offset;
     
     IPH_VHLTOS_SET(iphdr, 4, 5, 16);
-    IPH_LEN_SET(iphdr, htons(len+IPV4_HEADER_LENGTH));
+    IPH_LEN_SET(iphdr, htons(len+IPV4_HEADER_LENGTH-offset));
     IPH_TTL_SET(iphdr, 32);
     IPH_PROTO_SET(iphdr, proto);
     iphdr->src.addr = src;
@@ -163,7 +172,7 @@ uint8_t *add_IPv4_header(uint8_t* payload, unsigned offset, uint8_t  proto, uint
     IPH_CHKSUM_SET(iphdr, htons(calc_checksum(ipv4_packet, IPV4_HEADER_LENGTH)));
     
     memcpy(ipv4_packet, payload, offset);
-    memcpy(ipv4_packet+offset+IPV4_HEADER_LENGTH, payload+offset, len);
+    memcpy(ipv4_packet+offset+IPV4_HEADER_LENGTH, payload+offset, len/*-offset*/);
 
     free(payload);
     return ipv4_packet;

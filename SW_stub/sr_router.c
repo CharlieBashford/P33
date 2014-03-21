@@ -96,8 +96,8 @@ void router_destroy( router_t* router ) {
 bool send_packet(byte *payload, uint32_t src, uint32_t dest, int len, bool is_arp_packet, bool is_hello_packet) {
     interface_t *target_intf = sr_integ_findsrcintf(dest);
     if (dest != OSPF_IP && target_intf == NULL) {
-        packet_info_t *pi = malloc(sizeof(packet_info_t)); //TODO: Free!
-        pi->packet = malloc(len+14);
+        packet_info_t *pi = malloc_or_die(sizeof(packet_info_t)); //TODO: Free!
+        pi->packet = malloc_or_die(len+14);
         memcpy(pi->packet+14, payload, len);
         pi->len = len;
         handle_no_route_to_host(pi);
@@ -109,7 +109,7 @@ bool send_packet(byte *payload, uint32_t src, uint32_t dest, int len, bool is_ar
 bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t dest, int len, bool is_arp_packet, bool is_hello_packet) {
     addr_mac_t src_mac = intf->mac;
 
-    byte *packet = malloc((14+len)*sizeof(byte));
+    byte *packet = malloc_or_die((14+len)*sizeof(byte));
     addr_mac_t dest_mac;
     
     if (!is_arp_packet && !is_hello_packet) {

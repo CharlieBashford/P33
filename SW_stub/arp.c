@@ -91,8 +91,8 @@ void handle_ARP_packet(packet_info_t *pi) {
 void handle_not_repsponding_to_arp(byte *payload, unsigned len) {
     printf("Not responding to arp:\n");
     
-    packet_info_t *pi = malloc(sizeof(packet_info_t));
-    pi->packet = malloc((14+len)*sizeof(byte));
+    packet_info_t *pi = malloc_or_die(sizeof(packet_info_t));
+    pi->packet = malloc_or_die((14+len)*sizeof(byte));
     memcpy(pi->packet+14, payload, len);
     pi->len = len;
     
@@ -165,7 +165,7 @@ void send_ARP_request(addr_ip_t ip, int num) {
     ip_to_string(ip_str, ip);
     printf("Sending an ARP request (number %d) to %s:\n", num, ip_str);
     
-    byte *packet = malloc(28*sizeof(byte));     //TODO: Free!
+    byte *packet = malloc_or_die(28*sizeof(byte));     //TODO: Free!
     struct arp_hdr *arhdr = (void *)packet;
     ARH_HARD_TYPE_SET(arhdr, 1);
     ARH_PROTO_TYPE_SET(arhdr, 0x0800);

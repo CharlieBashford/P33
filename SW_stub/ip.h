@@ -15,14 +15,13 @@
 #define ICMP_PROTOCOL 1
 #define IP_ENCAP_PROTOCOL 4
 #define TCP_PROTOCOL 6
+#define ESP_PROTOCOL 50
 #define PWOSPF_PROTOCOL 89
 
 #define IPV4_HEADER_LENGTH 20
 #define IPV4_HEADER_OFFSET 14
 
 void handle_IPv4_packet(packet_info_t *pi);
-
-bool check_packet(packet_info_t *pi);
 
 void handle_TCP_packet(packet_info_t *pi);
 

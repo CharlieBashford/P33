@@ -61,7 +61,7 @@ void handle_PWOSPF_packet(packet_info_t *pi) {
         bool updated = FALSE;
         if (pi->interface->neighbor_list_head == NULL) {
             debug_println("Adding new neighbor at start");
-            neighbor_t *neighbor = malloc(sizeof(neighbor_t));
+            neighbor_t *neighbor = malloc_or_die(sizeof(neighbor_t));
             neighbor->time_last = get_time();
             neighbor->ip = src;
             neighbor->id = PWHDR_ROUTER_ID(pwhdr);
@@ -89,7 +89,7 @@ void handle_PWOSPF_packet(packet_info_t *pi) {
             
             if (current_neighbor == NULL) {
                 debug_println("Adding new neighbor");
-                neighbor_t *neighbor = malloc(sizeof(neighbor_t));
+                neighbor_t *neighbor = malloc_or_die(sizeof(neighbor_t));
                 neighbor->time_last = get_time();
                 neighbor->ip = src;
                 neighbor->id = PWHDR_ROUTER_ID(pwhdr);
@@ -226,7 +226,7 @@ void handle_PWOSPF_packet(packet_info_t *pi) {
         PWHDR_CHKSUM_SET(pwhdr, htons(calc_checksum(pi->packet+IPV4_HEADER_OFFSET+IPV4_HEADER_LENGTH, len)));
         unsigned i;
         router_t *router = get_router();
-        byte *payload = malloc(len*sizeof(byte));
+        byte *payload = malloc_or_die(len*sizeof(byte));
         memcpy(payload, pi->packet+IPV4_HEADER_OFFSET+IPV4_HEADER_LENGTH, len); //Copy PWOSPF packet.
         for (i = 0; i < router->num_interfaces; i++) {
             interface_t *intf = &router->interface[i];
@@ -469,7 +469,7 @@ void update_routing_table() { // TODO:Mutli threading for interface and database
 
 void send_HELLO_packet(interface_t *intf) {
     unsigned len = PWOSPF_HEADER_LENGTH+HELLO_HEADER_LENGTH;
-    byte *payload = malloc(len*sizeof(byte));
+    byte *payload = malloc_or_die(len*sizeof(byte));
     struct pwospf_hdr *pwhdr = (void *)payload;
     PWHDR_VER_TYPE_SET(pwhdr, 2, TYPE_HELLO);
     PWHDR_LEN_SET(pwhdr, htons(len));
@@ -504,7 +504,7 @@ void send_LSU_packet(unsigned seq_no) {
         }
     }
     unsigned len = PWOSPF_HEADER_LENGTH+LSU_HEADER_LENGTH+advert_no*LSU_AD_LENGTH;
-    byte *payload = malloc(len*sizeof(byte));
+    byte *payload = malloc_or_die(len*sizeof(byte));
     struct pwospf_hdr *pwhdr = (void *)payload;
     PWHDR_VER_TYPE_SET(pwhdr, 2, TYPE_LSU);
     PWHDR_LEN_SET(pwhdr, htons(len));
@@ -681,21 +681,21 @@ void router_add_route( router_t* router, addr_ip_t prefix, addr_ip_t next_hop,
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, interface_p->hw_oq);
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, router->num_interfaces+j);
     
-    uint32_t *prefix_out = malloc(sizeof(uint32_t));
-    uint32_t *subnet_mask_out = malloc(sizeof(uint32_t));
-    uint32_t *next_hop_out = malloc(sizeof(uint32_t));
-    uint32_t *oq_out = malloc(sizeof(uint32_t));
+    uint32_t prefix_out;
+    uint32_t subnet_mask_out;
+    uint32_t next_hop_out;
+    uint32_t oq_out;
     
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_RD_ADDR, router->num_interfaces+j);
-    readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, prefix_out);
-    readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, subnet_mask_out);
-    readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, next_hop_out);
-    readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, oq_out);
+    readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, &prefix_out);
+    readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, &subnet_mask_out);
+    readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, &next_hop_out);
+    readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, &oq_out);
     
-    assert(*prefix_out == ntohl(prefix));
-    assert(*subnet_mask_out == ntohl(subnet_mask));
-    assert(*next_hop_out == ntohl(next_hop));
-    assert(*oq_out == interface_p->hw_oq);
+    assert(prefix_out == ntohl(prefix));
+    assert(subnet_mask_out == ntohl(subnet_mask));
+    assert(next_hop_out == ntohl(next_hop));
+    assert(oq_out == interface_p->hw_oq);
     
     free(prefix_out);
     free(subnet_mask_out);
