@@ -54,8 +54,6 @@ HEX_PAIR          ({HEX_DIGIT}{HEX_DIGIT})
 MAC_ADDR          ({HEX_PAIR}:{HEX_PAIR}:{HEX_PAIR}:{HEX_PAIR}:{HEX_PAIR}:{HEX_PAIR})
 NAME              ([a-zA-Z][a-zA-Z_0-9]*)
 
-SLASH             (/)
-
 BEG_STRING        (\"[^"\n]*)
 STRING            ({BEG_STRING}\")
 /* " this is so the code looks decent in emacs :) */
@@ -66,7 +64,7 @@ STRING            ({BEG_STRING}\")
 "\n"         { startCol = endCol = 0; return T_NEWLINE; }
 [ ]          { endCol += 1; }
 [\t]         { endCol += TAB_SIZE - endCol%TAB_SIZE + 1; }
-
+"/"          { return T_SLASH; }
 
  /* -------------     Keywords     ------------- */
 
@@ -151,8 +149,6 @@ STRING            ({BEG_STRING}\")
 {STRING}            { return copy_yytext(TRUE); }
 
 {BEG_STRING}        { parse_error("Unterminated String Constant"); return 0; }
-
-{SLASH}             { return TAV_SLASH; }
 
  /* *********** Default Rule (error) *********** */
 .                   { parse_error("Unrecognized lexeme"); return 0; }

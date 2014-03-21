@@ -299,7 +299,7 @@ uint32_t sr_integ_ip_output(uint8_t* payload /* given */,
                             uint32_t dest, /* nbo */
                             int len) {
     
-    payload = add_IPv4_header(payload, proto, src, dest, len);
+    payload = add_IPv4_header(payload, 0, proto, src, dest, len);
     
     addr_ip_t target = sr_integ_findnextip(dest);
     char src_str[STRLEN_IP], target_str[STRLEN_IP];

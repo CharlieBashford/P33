@@ -32,6 +32,7 @@ bool handle_ICMP_packet(packet_info_t *pi) {
         case ICMP_TYPE_ECHO_REQUEST: ICMPH_TYPE_SET(icmp_hdr, 0);
             break;
         case ICMP_TYPE_ECHO_REPLY: handle_ping_reply(pi); return 1;
+        default: debug_println("Dropping packet: type %d unknown.", type); return 1;
             
     }
     ICMPH_CHKSUM_SET(icmp_hdr, 0);

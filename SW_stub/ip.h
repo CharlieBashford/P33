@@ -13,6 +13,7 @@
 #include "sr_router.h"
 
 #define ICMP_PROTOCOL 1
+#define IP_ENCAP_PROTOCOL 4
 #define TCP_PROTOCOL 6
 #define PWOSPF_PROTOCOL 89
 
@@ -21,11 +22,13 @@
 
 void handle_IPv4_packet(packet_info_t *pi);
 
+bool check_packet(packet_info_t *pi);
+
 void handle_TCP_packet(packet_info_t *pi);
 
 uint16_t calc_checksum(byte *header, int len);
 
-uint8_t *add_IPv4_header(uint8_t* payload, uint8_t  proto, uint32_t src, uint32_t dest, int len);
+uint8_t *add_IPv4_header(uint8_t* payload, unsigned location, uint8_t  proto, uint32_t src, uint32_t dest, int len);
 
 void handle_no_route_to_host(packet_info_t *pi);
 

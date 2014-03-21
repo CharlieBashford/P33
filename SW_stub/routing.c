@@ -233,7 +233,7 @@ void handle_PWOSPF_packet(packet_info_t *pi) {
             neighbor_t *neighbor = intf->neighbor_list_head;
             while (neighbor != NULL) {
                 if (neighbor->ip != IPH_SRC(iphdr) && neighbor->id != 0) {
-                    byte *new_payload = add_IPv4_header(payload, PWOSPF_PROTOCOL, intf->ip, neighbor->ip, len);
+                    byte *new_payload = add_IPv4_header(payload, 0, PWOSPF_PROTOCOL, intf->ip, neighbor->ip, len);
                     send_packet_intf(intf, new_payload, intf->ip, neighbor->ip, len+20, FALSE, FALSE);
                     
                 }
@@ -484,7 +484,7 @@ void send_HELLO_packet(interface_t *intf) {
     PWHDR_CHKSUM_SET(pwhdr, htons(calc_checksum(payload, len)));
     
     if (intf->neighbor_list_head != NULL) {
-        byte *new_payload = add_IPv4_header(payload, PWOSPF_PROTOCOL, intf->ip, OSPF_IP, len);
+        byte *new_payload = add_IPv4_header(payload, 0, PWOSPF_PROTOCOL, intf->ip, OSPF_IP, len);
         send_packet_intf(intf, new_payload, intf->ip, OSPF_IP, len+20, FALSE, TRUE);
     }
 }
@@ -543,7 +543,7 @@ void send_LSU_packet(unsigned seq_no) {
         neighbor_t *neighbor = intf->neighbor_list_head;
         while (neighbor != NULL) {
             if (neighbor->id != 0) {
-                byte *new_payload = add_IPv4_header(payload, PWOSPF_PROTOCOL, intf->ip, neighbor->ip, len);
+                byte *new_payload = add_IPv4_header(payload, 0, PWOSPF_PROTOCOL, intf->ip, neighbor->ip, len);
                 send_packet_intf(intf, new_payload, intf->ip, neighbor->ip, len+20, FALSE, FALSE);
             }
             neighbor = neighbor->next_neighbor;

@@ -201,6 +201,7 @@ void router_handle_packet( packet_info_t* pi ) {
     switch (ether_type) {
         case ARP_ETHERTYPE:    handle_ARP_packet(pi); break;
         case IPV4_ETHERTYPE:    handle_IPv4_packet(pi); break;
+        default: debug_println("Dropped Packet: can't respond to ethertype %04X.", ether_type);
     }
 }
 
