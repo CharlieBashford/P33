@@ -18,6 +18,7 @@
 #include "sr_integration.h"
 #include "routing.h"
 #include "policy.h"
+#include "sha256.h"
 
 void handle_IPv4_packet(packet_info_t *pi) {
     printf("Packet is IPv4\n");
@@ -114,7 +115,7 @@ void handle_IPv4_packet(packet_info_t *pi) {
         iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
         
         if (policy->secret != NULL && strlen(policy->secret) != 0) {
-            pi->packet = add_ESP_packet(pi->packet, IPV4_HEADER_OFFSET+IPV4_HEADER_LENGTH, 0, 0, 0, IP_ENCAP_PROTOCOL, 0, pi->len);
+            pi->packet = add_ESP_packet(pi->packet, IPV4_HEADER_OFFSET+IPV4_HEADER_LENGTH, 0, 0, 0, IP_ENCAP_PROTOCOL, policy->secret, pi->len);
             pi->len += ESP_HEADER_LENGTH + ESP_TAIL_LENGTH; //incl padding
             iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
         }
