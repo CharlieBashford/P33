@@ -117,7 +117,7 @@ void sr_integ_hw_setup( struct sr_instance* sr ) {
     free(ip);
 #endif
     
-    link_t link[get_router()->num_interfaces];
+    link_t link[router->num_interfaces];
     for (i = 0; i < router->num_interfaces; i++) {
         interface_t *intf = &router->interface[i];
         /* Adding neighbor for interface */
@@ -134,7 +134,7 @@ void sr_integ_hw_setup( struct sr_instance* sr ) {
         link[i].mask = intf->subnet_mask;
         link[i].time_last = get_time();
     }
-    router_add_database_entry(get_router(), get_router()->router_id, link, get_router()->num_interfaces, 0, NULL, 0);
+    router_add_database_entry(get_router(), router->router_id, link, router->num_interfaces, 0, NULL, 0);
     
     if (router->use_ospf)
         update_routing_table();

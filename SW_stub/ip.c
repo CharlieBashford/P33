@@ -154,7 +154,7 @@ uint16_t calc_checksum(byte *header, int len) {
     return ~checksum;
 }
 
-uint8_t *add_IPv4_header(uint8_t* payload, unsigned offset, uint8_t  proto, uint32_t src, uint32_t dest, int len) {
+uint8_t *add_IPv4_header(uint8_t *payload, unsigned offset, uint8_t  proto, uint32_t src, uint32_t dest, int len) {
     debug_println("Adding IPv4 header.");
     /*unsigned i;
      for (i = 0; i < len; i++)
@@ -166,14 +166,18 @@ uint8_t *add_IPv4_header(uint8_t* payload, unsigned offset, uint8_t  proto, uint
     
     IPH_VHLTOS_SET(iphdr, 4, 5, 16);
     IPH_LEN_SET(iphdr, htons(len+IPV4_HEADER_LENGTH-offset));
+    IPH_ID_SET(iphdr, 0);
+    IPH_OFFSET_SET(iphdr, 0);
     IPH_TTL_SET(iphdr, 32);
     IPH_PROTO_SET(iphdr, proto);
     iphdr->src.addr = src;
     iphdr->dest.addr = dest;
+    
+    IPH_CHKSUM_SET(iphdr, 0);
     IPH_CHKSUM_SET(iphdr, htons(calc_checksum(ipv4_packet, IPV4_HEADER_LENGTH)));
     
     memcpy(ipv4_packet, payload, offset);
-    memcpy(ipv4_packet+offset+IPV4_HEADER_LENGTH, payload+offset, len/*-offset*/);
+    memcpy(ipv4_packet+offset+IPV4_HEADER_LENGTH, payload+offset, len-offset);
 
     free(payload);
     return ipv4_packet;

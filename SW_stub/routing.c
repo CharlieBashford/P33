@@ -333,7 +333,7 @@ void update_routing_table() { // TODO:Mutli threading for interface and database
             debug_println("i=%d", i);
             if (current_entry->link[i].router_id != 0) {
                 int pos = router_find_database_entry_position(router, current_entry->link[i].router_id);
-                debug_println("isn't 0, and pos=%d, visited=%d, time=%f", pos, visited[pos], (get_time() - current_entry->link[i].time_last));
+                debug_println("isn't 0, and pos=%d, visited=%d, time=%f", pos, ((pos >= 0)? visited[pos] : 0), (get_time() - current_entry->link[i].time_last));
                 bool is_static = current_entry->router_id == router->router_id && current_entry->link[i].router_id == 0;
                 if (pos != -1 && !visited[pos] && (((get_time() - current_entry->link[i].time_last) < 3*router->lsuint*1000) || is_static)) { //If not expired
                     debug_println("checking distance: distance[%d]=%d + 1 < %d", current_pos, distance[current_pos], distance[pos]);
@@ -470,21 +470,25 @@ void update_routing_table() { // TODO:Mutli threading for interface and database
 void send_HELLO_packet(interface_t *intf) {
     unsigned len = PWOSPF_HEADER_LENGTH+HELLO_HEADER_LENGTH;
     byte *payload = malloc_or_die(len*sizeof(byte));
+
     struct pwospf_hdr *pwhdr = (void *)payload;
     PWHDR_VER_TYPE_SET(pwhdr, 2, TYPE_HELLO);
     PWHDR_LEN_SET(pwhdr, htons(len));
     PWHDR_ROUTER_ID_SET(pwhdr, get_router()->router_id);
     PWHDR_AREA_ID_SET(pwhdr, get_router()->area_id);
-    pwhdr->_au_type = 0;
-    pwhdr->_auth = 0;
+    PWHDR_AU_TYPE_SET(pwhdr, 0);
+    PWHDR_AUTH_SET(pwhdr, 0);
+    
     struct hello_hdr *hehdr = (void *)payload+PWOSPF_HEADER_LENGTH;
     HEHDR_SUB_MASK_SET(hehdr, intf->subnet_mask);
     HEHDR_HELLO_INT_SET(hehdr, htons(intf->helloint));
+    HEHDR_PADDING_SET(hehdr);
+    
     PWHDR_CHKSUM_SET(pwhdr, 0);
     PWHDR_CHKSUM_SET(pwhdr, htons(calc_checksum(payload, len)));
     
     if (intf->neighbor_list_head != NULL) {
-        byte *new_payload = add_IPv4_header(payload, 0, PWOSPF_PROTOCOL, intf->ip, OSPF_IP, len);
+        uint8_t *new_payload = add_IPv4_header(payload, 0, PWOSPF_PROTOCOL, intf->ip, OSPF_IP, len);
         send_packet_intf(intf, new_payload, intf->ip, OSPF_IP, len+20, FALSE, TRUE);
     }
 }

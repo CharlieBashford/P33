@@ -15,6 +15,7 @@
 #include "sr_router.h"
 #include "sr_integration.h"
 
+#define ARP_PACKET_LENGTH 28
 
 struct arp_hdr {
     PACK_STRUCT_FIELD(uint16_t _hard_type);

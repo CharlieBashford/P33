@@ -165,10 +165,11 @@ void send_ARP_request(addr_ip_t ip, int num) {
     ip_to_string(ip_str, ip);
     printf("Sending an ARP request (number %d) to %s:\n", num, ip_str);
     
-    byte *packet = malloc_or_die(28*sizeof(byte));     //TODO: Free!
+    byte *packet = malloc_or_die(ARP_PACKET_LENGTH*sizeof(byte));     //TODO: Free!
+
     struct arp_hdr *arhdr = (void *)packet;
     ARH_HARD_TYPE_SET(arhdr, 1);
-    ARH_PROTO_TYPE_SET(arhdr, 0x0800);
+    ARH_PROTO_TYPE_SET(arhdr, IPV4_ETHERTYPE);
     ARH_HARD_LEN_SET(arhdr, 6);
     ARH_PROTO_LEN_SET(arhdr, 4);
     ARH_OP_SET(arhdr, 1);
@@ -182,6 +183,7 @@ void send_ARP_request(addr_ip_t ip, int num) {
     ARH_SENDER_MAC_SET(arhdr, interface->mac);
     ARH_SENDER_IP_SET(arhdr, interface->ip);
     ARH_TARGET_IP_SET(arhdr, ip);
+    ARH_TARGET_MAC_SET(arhdr, make_mac_addr(0, 0, 0, 0, 0, 0));
     
     send_packet(packet, interface->ip, ip, 28, TRUE, FALSE);
 }

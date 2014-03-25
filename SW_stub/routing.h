@@ -47,10 +47,13 @@ struct pwospf_hdr {
 #define PWHDR_ROUTER_ID_SET(hdr, router_id) (hdr)->_router_id = (router_id)
 #define PWHDR_AREA_ID_SET(hdr, area_id) (hdr)->_area_id = (area_id)
 #define PWHDR_CHKSUM_SET(hdr, chksum) (hdr)->_chksum = (chksum)
+#define PWHDR_AU_TYPE_SET(hdr, au_type) (hdr)->_au_type = (au_type)
+#define PWHDR_AUTH_SET(hdr, auth) (hdr)->_auth = (auth)
 
 struct hello_hdr {
     PACK_STRUCT_FIELD(uint32_t _sub_mask);
     PACK_STRUCT_FIELD(uint16_t _hello_int);
+    PACK_STRUCT_FIELD(uint16_t _padding)
 } PACK_STRUCT_STRUCT;
 
 #define HEHDR_SUB_MASK(hdr) ((hdr)->_sub_mask)
@@ -58,6 +61,7 @@ struct hello_hdr {
 
 #define HEHDR_SUB_MASK_SET(hdr, sub_mask) (hdr)->_sub_mask = (sub_mask)
 #define HEHDR_HELLO_INT_SET(hdr, hello_int) (hdr)->_hello_int = (hello_int)
+#define HEHDR_PADDING_SET(hdr) (hdr)->_padding = 0
 
 struct lsu_hdr {
     PACK_STRUCT_FIELD(uint16_t _seq_no);

@@ -54,10 +54,13 @@ void router_init( router_t* router ) {
     }
 #endif
     
+    router->area_id = 0;
+    
     router->num_interfaces = 0;
     router->num_routes = 0;
     router->num_arp_cache = 0;
     router->num_pending_arp = 0;
+    router->num_database = 0;
     router->num_policies = 0;
     router->lsuint = 30;
     router->added_links = FALSE;
@@ -68,6 +71,10 @@ void router_init( router_t* router ) {
     pthread_mutex_init( &router->route_table_lock, NULL );
     pthread_mutex_init( &router->arp_cache_lock, NULL );
     pthread_mutex_init( &router->pending_arp_lock, NULL);
+    pthread_mutex_init( &router->database_lock, NULL);
+    pthread_mutex_init( &router->policy_lock, NULL);
+    
+    debug_println("Locks initalised");
 
 #ifndef _THREAD_PER_PACKET_
     debug_println( "Initializing the router work queue with %u worker threads",
@@ -109,7 +116,7 @@ bool send_packet(byte *payload, uint32_t src, uint32_t dest, int len, bool is_ar
 bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t dest, int len, bool is_arp_packet, bool is_hello_packet) {
     addr_mac_t src_mac = intf->mac;
 
-    byte *packet = malloc_or_die((14+len)*sizeof(byte));
+    uint8_t *packet = malloc_or_die((14+len)*sizeof(uint8_t));
     addr_mac_t dest_mac;
     
     if (!is_arp_packet && !is_hello_packet) {
@@ -166,7 +173,7 @@ bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t d
     } else {
         ETH_TYPE_SET(ethdr, htons(IPV4_ETHERTYPE));
     }
-    bcopy(payload, packet+14, len);
+    memcpy(packet+14, payload, len);
     
     /*for (i = 0; i < len+14; i++)
      printf("(%d %02X) ", i, (int)*(packet+i));
