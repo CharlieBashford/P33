@@ -164,7 +164,12 @@ void generate_pending_ARP_thread() {
         pthread_mutex_unlock(&router->pending_arp_lock);
         
         for (i = 0; i < num_expiring; i++) {
-            handle_not_repsponding_to_arp(expiring_arp_entry[i].payload, expiring_arp_entry[i].len);
+            struct ip_hdr *iphdr = (void *)expiring_arp_entry[i].payload;
+            if (router_lookup_interface_via_ip(router, IPH_SRC(iphdr)) == NULL) { //Don't send a response to itself.
+                handle_not_repsponding_to_arp(expiring_arp_entry[i].payload, expiring_arp_entry[i].len);
+            } else {
+                debug_println("NOT sending response, because it originated from own interface.");
+            }
             free(expiring_arp_entry[i].payload);
             expiring_arp_entry[i].payload = NULL;
         }
