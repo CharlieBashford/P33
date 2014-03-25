@@ -23,20 +23,6 @@
 
 void sys_thread_new(void (* thread)(void *arg), void *arg);
 
-struct eth_hdr {
-    addr_mac_t _dest;
-    addr_mac_t _src;
-    PACK_STRUCT_FIELD(uint16_t _eth_type);
-} PACK_STRUCT_STRUCT;
-
-#define ETH_DEST(hdr) ((hdr)->_dest)
-#define ETH_SRC(hdr) ((hdr)->_src)
-#define ETH_TYPE(hdr) ((hdr)->_eth_type)
-
-#define ETH_DEST_SET(hdr, dest) (hdr)->_dest = (dest)
-#define ETH_SRC_SET(hdr, src) (hdr)->_src = (src)
-#define ETH_TYPE_SET(hdr, eth_type) (hdr)->_eth_type = (eth_type)
-
 
 void router_init( router_t* router ) {
 #ifdef _CPUMODE_
@@ -103,25 +89,29 @@ void router_destroy( router_t* router ) {
 bool send_packet(byte *payload, uint32_t src, uint32_t dest, int len, bool is_arp_packet, bool is_hello_packet) {
     interface_t *target_intf = sr_integ_findsrcintf(dest);
     if (dest != OSPF_IP && target_intf == NULL) {
-        packet_info_t *pi = malloc_or_die(sizeof(packet_info_t)); //TODO: Free!
-        pi->packet = malloc_or_die(len+14);
+        packet_info_t *pi = malloc_or_die(sizeof(packet_info_t));   //Free'd (below).
+        pi->packet = malloc_or_die(len+14);                         //Free'd (below).
         memcpy(pi->packet+14, payload, len);
         pi->len = len;
         handle_no_route_to_host(pi);
+        free(pi->packet);
+        free(pi);
         return 1;
     }
     return send_packet_intf(target_intf, payload, src, dest, len, is_arp_packet, is_hello_packet);
 }
 
 bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t dest, int len, bool is_arp_packet, bool is_hello_packet) {
+    router_t *router = get_router();
+    
     addr_mac_t src_mac = intf->mac;
-
+    
     uint8_t *packet = malloc_or_die((14+len)*sizeof(uint8_t));
     addr_mac_t dest_mac;
     
     if (!is_arp_packet && !is_hello_packet) {
-        ip_mac_t *entry = router_find_arp_entry(get_router(), dest);
-        if (router_lookup_interface_via_ip(get_router(), dest)) {
+        ip_mac_t *entry = router_find_arp_entry(router, dest);
+        if (router_lookup_interface_via_ip(router, dest)) {
             char dest_str[STRLEN_IP];
             ip_to_string(dest_str, dest);
             debug_println("ERROR: Trying to send ARP request for own interface %s!", dest_str);
@@ -129,16 +119,16 @@ bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t d
         }
         if (entry == NULL || (get_time() - entry->time) > 15000) {
             if (entry != NULL) {
-                router_delete_arp_entry(get_router(), dest);
+                router_delete_arp_entry(router, dest);
             }
-            printf("Couldn't find ip address in arp cache or is too old.\n");
+            debug_println("Couldn't find ip address in arp cache or is too old.");
             
             debug_println("Waiting to get lock");
-            pthread_mutex_lock(&get_router()->pending_arp_lock);
+            pthread_mutex_lock(&router->pending_arp_lock);
             bool found = FALSE;
             unsigned i;
-            for (i = 0; i < get_router()->num_pending_arp; i++) {
-                if (get_router()->pending_arp[i].ip == dest) {
+            for (i = 0; i < router->num_pending_arp; i++) {
+                if (router->pending_arp[i].ip == dest) {
                     found = TRUE;
                     break;
                 }
@@ -146,17 +136,18 @@ bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t d
             if (found == FALSE) {
                 send_ARP_request(dest, 1);
 
-                pending_arp_entry_t *pending_arp_entry = &get_router()->pending_arp[get_router()->num_pending_arp];
+                pending_arp_entry_t *pending_arp_entry = &router->pending_arp[router->num_pending_arp];
                 pending_arp_entry->ip = dest;
                 pending_arp_entry->src = src;
-                pending_arp_entry->payload = payload;
+                pending_arp_entry->payload = malloc(len*sizeof(uint8_t)); //Free'd (in generate_pending_ARP_thread).
+                memcpy(pending_arp_entry->payload, payload, len);
                 pending_arp_entry->len = len;
                 pending_arp_entry->num_sent = 1;
                 
-                get_router()->num_pending_arp += 1;
+                router->num_pending_arp += 1;
             }
             
-            pthread_mutex_unlock(&get_router()->pending_arp_lock);
+            pthread_mutex_unlock(&router->pending_arp_lock);
             debug_println("Finished with lock");
             return 0;
         }
@@ -183,13 +174,14 @@ bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t d
     mac_to_string(src_mac_str, &src_mac);
     mac_to_string(dest_mac_str, &dest_mac);
     
-    printf("Adding ethernet header: source=%s and dest=%s\n", src_mac_str, dest_mac_str);
+    debug_println("Adding ethernet header: source=%s and dest=%s", src_mac_str, dest_mac_str);
     
     if (intf->enabled == FALSE) {
         debug_println("SENDING: DROPPING PACKET! Interface %s is disabled.", intf->name);
         return 0;
     }
     sr_integ_low_level_output(get_sr(), packet, len+14, intf);
+    free(packet);
     
     return 0;
 }
@@ -197,19 +189,23 @@ bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t d
 void router_handle_packet( packet_info_t* pi ) {
     char ip_str[16];
     ip_to_string(ip_str, pi->interface->ip);
-    printf("-----------New Packet on %s(%s)---------\n", pi->interface->name, ip_str);
+    debug_println("-----------New Packet on %s(%s)---------", pi->interface->name, ip_str);
     if (pi->interface->enabled == FALSE) {
         debug_println("RECIEVING: DROPPING PACKET! Interface %s is disabled.", pi->interface->name);
         return;
     }
     
-    uint16_t ether_type = (*(pi->packet+12) << 8) + *(pi->packet+13);
+    struct eth_hdr *ethhdr = (void *)pi->packet;
+    
+    uint16_t ether_type = ntohs(ETH_TYPE(ethhdr));
     
     switch (ether_type) {
         case ARP_ETHERTYPE:    handle_ARP_packet(pi); break;
         case IPV4_ETHERTYPE:    handle_IPv4_packet(pi); break;
         default: debug_println("Dropped Packet: can't respond to ethertype %04X.", ether_type);
     }
+    free(pi->packet);
+    free(pi);
 }
 
 #ifdef _THREAD_PER_PACKET_

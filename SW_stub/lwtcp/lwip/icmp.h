@@ -100,6 +100,7 @@ struct icmp_te_hdr {
 #define ICMPH_TYPE_SET(hdr, type) ((hdr)->_type_code = HTONS(ICMPH_CODE(hdr) | ((type) << 8)))
 #define ICMPH_CODE_SET(hdr, code) ((hdr)->_type_code = HTONS((code) | (ICMPH_TYPE(hdr) << 8)))
 #define ICMPH_CHKSUM_SET(hdr, checksum) ((hdr)->chksum = (checksum))
+#define ICMPH_UNUSED_SET(hdr) ((hdr)->unused = 0)
 
 #endif /* __LWIP_ICMP_H__ */
 	  

@@ -38,7 +38,7 @@ void handle_ARP_packet(packet_info_t *pi) {
     if (target_intf && op == 1) {
         char sender_ip_str[12];
         ip_to_string(sender_ip_str, sender_ip);
-        printf("Packet is an ARP request from %s for %s.\n", sender_ip_str, target_ip_str);
+        debug_println("Packet is an ARP request from %s for %s.", sender_ip_str, target_ip_str);
         
         if (router_find_arp_entry(router, sender_ip)) {
             router_delete_arp_entry(router, sender_ip);
@@ -53,7 +53,7 @@ void handle_ARP_packet(packet_info_t *pi) {
     } else if (target_intf && op == 2) {
         char sender_ip_str[12];
         ip_to_string(sender_ip_str, sender_ip);
-        printf("Packet is an ARP reply from %s for %s.\n", sender_ip_str, target_ip_str);
+        debug_println("Packet is an ARP reply from %s for %s.\n", sender_ip_str, target_ip_str);
         
         if (router_find_arp_entry(router, sender_ip)) {
             router_delete_arp_entry(router, sender_ip);
@@ -89,16 +89,23 @@ void handle_ARP_packet(packet_info_t *pi) {
 }
 
 void handle_not_repsponding_to_arp(byte *payload, unsigned len) {
-    printf("Not responding to arp:\n");
+    debug_println("Not responding to arp:\n");
     
-    packet_info_t *pi = malloc_or_die(sizeof(packet_info_t));
-    pi->packet = malloc_or_die((14+len)*sizeof(byte));
-    memcpy(pi->packet+14, payload, len);
+    
+    packet_info_t *pi = malloc_or_die(sizeof(packet_info_t));                   //Free'd (below).
+    pi->packet = malloc_or_die((IPV4_HEADER_OFFSET+len)*sizeof(uint8_t));       //Free'd (below).
     pi->len = len;
     
+    memcpy(pi->packet+IPV4_HEADER_OFFSET, payload, len);
+    
+    struct eth_hdr *ethhdr = (void *)pi->packet;
+    ETH_DEST_SET(ethhdr, make_mac_addr(0, 0, 0, 0, 0, 0));
+    ETH_SRC_SET(ethhdr, make_mac_addr(0, 0, 0, 0, 0, 0));
+    ETH_TYPE_SET(ethhdr, 0);
+    
     //Reverse soruce and destination again.
-    struct ip_hdr *iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
-    swap_bytes(&IPH_SRC(iphdr), &IPH_DEST(iphdr), 4);
+    struct ip_hdr *iphdr;/* = (void *)pi->packet+IPV4_HEADER_OFFSET;
+    swap_bytes(&IPH_SRC(iphdr), &IPH_DEST(iphdr), 4);*/
     
     unsigned i;
     for (i = 0; i < pi->len; i += 2)
@@ -106,22 +113,24 @@ void handle_not_repsponding_to_arp(byte *payload, unsigned len) {
     printf("\n");
     
     if (generate_response_ICMP_packet(pi, 3, 1)) return;
-    //pi->packet have moved in memory, so re-define.
-    iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
+    iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET; //pi->packet have moved in memory, so re-define.
     
     IPH_CHKSUM_SET(iphdr, 0);
-    IPH_CHKSUM_SET(iphdr, htons(calc_checksum(pi->packet+IPV4_HEADER_OFFSET, 20)));
+    IPH_CHKSUM_SET(iphdr, htons(calc_checksum(pi->packet+IPV4_HEADER_OFFSET, IPV4_HEADER_LENGTH)));
     
     for (i = 0; i < pi->len; i += 2)
         printf("%02X%02X ", *(pi->packet+i),*(pi->packet+i+1));
     printf("\n");
     
     addr_ip_t target_ip = sr_integ_findnextip(IPH_DEST(iphdr));
-    char target_ip_str[16];
+    char target_ip_str[STRLEN_IP];
     ip_to_string(target_ip_str, target_ip);
-    printf("target_ip=%s\n", target_ip_str);
+    debug_println("target_ip=%s", target_ip_str);
     
-    send_packet(pi->packet+14, IPH_SRC(iphdr), target_ip, pi->len-14, FALSE, FALSE);
+    send_packet(pi->packet+IPV4_HEADER_OFFSET, IPH_SRC(iphdr), target_ip, pi->len-IPV4_HEADER_OFFSET, FALSE, FALSE);
+
+    free(pi->packet);
+    free(pi);
 }
 
 void generate_pending_ARP_thread() {
@@ -138,7 +147,8 @@ void generate_pending_ARP_thread() {
             if (pending_arp_entry->num_sent >= 5) {
                 debug_println("Not responding to ARP request!");
                 expiring_arp_entry[num_expiring].payload = pending_arp_entry->payload;
-                expiring_arp_entry[num_expiring].ip = pending_arp_entry->ip;
+                expiring_arp_entry[num_expiring].len = pending_arp_entry->len;
+                num_expiring++;
                 unsigned j;
                 for (j = i; j < router->num_pending_arp-1; j++) {
                     router->pending_arp[j] = router->pending_arp[j+1];
@@ -146,13 +156,17 @@ void generate_pending_ARP_thread() {
                 router->num_pending_arp--;
                 if (i != router->num_pending_arp)
                     i--; //Don't increase i on next go.
+                continue;
             }
-            send_ARP_request(pending_arp_entry->ip, pending_arp_entry->num_sent++); //Shouldn't need lock.
+            send_ARP_request(pending_arp_entry->ip, ++pending_arp_entry->num_sent); //Shouldn't need lock.
         }
+        debug_println("num_pending_arp=%d", router->num_pending_arp);
         pthread_mutex_unlock(&router->pending_arp_lock);
         
         for (i = 0; i < num_expiring; i++) {
             handle_not_repsponding_to_arp(expiring_arp_entry[i].payload, expiring_arp_entry[i].len);
+            free(expiring_arp_entry[i].payload);
+            expiring_arp_entry[i].payload = NULL;
         }
         
         sleep(1);
@@ -163,10 +177,9 @@ void generate_pending_ARP_thread() {
 void send_ARP_request(addr_ip_t ip, int num) {
     char ip_str[16];
     ip_to_string(ip_str, ip);
-    printf("Sending an ARP request (number %d) to %s:\n", num, ip_str);
+    debug_println("Sending an ARP request (number %d) to %s:", num, ip_str);
     
-    byte *packet = malloc_or_die(ARP_PACKET_LENGTH*sizeof(byte));     //TODO: Free!
-
+    byte *packet = malloc_or_die(ARP_PACKET_LENGTH*sizeof(byte));     //Free'd (below).
     struct arp_hdr *arhdr = (void *)packet;
     ARH_HARD_TYPE_SET(arhdr, 1);
     ARH_PROTO_TYPE_SET(arhdr, IPV4_ETHERTYPE);
@@ -176,7 +189,7 @@ void send_ARP_request(addr_ip_t ip, int num) {
     
     interface_t *interface = sr_integ_findsrcintf(ip);
     if (interface == NULL) {
-        printf("ERROR: can't send ARP request, ip %s is not next hop!\n", ip_str);
+        debug_println("ERROR: can't send ARP request, ip %s is not next hop!", ip_str);
         return;
     }
     
@@ -186,6 +199,7 @@ void send_ARP_request(addr_ip_t ip, int num) {
     ARH_TARGET_MAC_SET(arhdr, make_mac_addr(0, 0, 0, 0, 0, 0));
     
     send_packet(packet, interface->ip, ip, 28, TRUE, FALSE);
+    free(packet);
 }
 
 void router_add_arp_entry( router_t *router, addr_mac_t mac, addr_ip_t ip, bool dynamic) {

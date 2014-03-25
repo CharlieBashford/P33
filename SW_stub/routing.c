@@ -61,7 +61,7 @@ void handle_PWOSPF_packet(packet_info_t *pi) {
         bool updated = FALSE;
         if (pi->interface->neighbor_list_head == NULL) {
             debug_println("Adding new neighbor at start");
-            neighbor_t *neighbor = malloc_or_die(sizeof(neighbor_t));
+            neighbor_t *neighbor = malloc_or_die(sizeof(neighbor_t)); //Free'd (in generate_HELLO_thread).
             neighbor->time_last = get_time();
             neighbor->ip = src;
             neighbor->id = PWHDR_ROUTER_ID(pwhdr);
@@ -89,7 +89,7 @@ void handle_PWOSPF_packet(packet_info_t *pi) {
             
             if (current_neighbor == NULL) {
                 debug_println("Adding new neighbor");
-                neighbor_t *neighbor = malloc_or_die(sizeof(neighbor_t));
+                neighbor_t *neighbor = malloc_or_die(sizeof(neighbor_t)); //Free'd (in generate_HELLO_thread).
                 neighbor->time_last = get_time();
                 neighbor->ip = src;
                 neighbor->id = PWHDR_ROUTER_ID(pwhdr);
@@ -217,7 +217,7 @@ void handle_PWOSPF_packet(packet_info_t *pi) {
         if (ntohs(LSHDR_TTL(lshdr)) >= 1) {
             LSHDR_TTL_DEC(lshdr);
         } else {
-            printf("PWOSF LSU packet exceeded TTL, not forwarding!\n");
+            debug_println("PWOSF LSU packet exceeded TTL, not forwarding!");
             return;
             
         }
@@ -226,20 +226,22 @@ void handle_PWOSPF_packet(packet_info_t *pi) {
         PWHDR_CHKSUM_SET(pwhdr, htons(calc_checksum(pi->packet+IPV4_HEADER_OFFSET+IPV4_HEADER_LENGTH, len)));
         unsigned i;
         router_t *router = get_router();
-        byte *payload = malloc_or_die(len*sizeof(byte));
+        byte *payload = malloc_or_die(len*sizeof(byte)); //Free'd (below).
         memcpy(payload, pi->packet+IPV4_HEADER_OFFSET+IPV4_HEADER_LENGTH, len); //Copy PWOSPF packet.
         for (i = 0; i < router->num_interfaces; i++) {
             interface_t *intf = &router->interface[i];
             neighbor_t *neighbor = intf->neighbor_list_head;
             while (neighbor != NULL) {
                 if (neighbor->ip != IPH_SRC(iphdr) && neighbor->id != 0) {
-                    byte *new_payload = add_IPv4_header(payload, 0, PWOSPF_PROTOCOL, intf->ip, neighbor->ip, len);
+                    debug_println("Forwarind on LSU packet!");
+                    byte *new_payload = add_IPv4_header(payload, 0, PWOSPF_PROTOCOL, intf->ip, neighbor->ip, len); //Free'd (below).
                     send_packet_intf(intf, new_payload, intf->ip, neighbor->ip, len+20, FALSE, FALSE);
-                    
+                    free(new_payload);
                 }
                 neighbor = neighbor->next_neighbor;
             }
         }
+        free(payload);
     } else {
         debug_println("Invalid PWOSPF packet type, dropping packet!");
         return;
@@ -469,7 +471,7 @@ void update_routing_table() { // TODO:Mutli threading for interface and database
 
 void send_HELLO_packet(interface_t *intf) {
     unsigned len = PWOSPF_HEADER_LENGTH+HELLO_HEADER_LENGTH;
-    byte *payload = malloc_or_die(len*sizeof(byte));
+    byte *payload = malloc_or_die(len*sizeof(byte)); //Free'd (below).
 
     struct pwospf_hdr *pwhdr = (void *)payload;
     PWHDR_VER_TYPE_SET(pwhdr, 2, TYPE_HELLO);
@@ -488,9 +490,11 @@ void send_HELLO_packet(interface_t *intf) {
     PWHDR_CHKSUM_SET(pwhdr, htons(calc_checksum(payload, len)));
     
     if (intf->neighbor_list_head != NULL) {
-        uint8_t *new_payload = add_IPv4_header(payload, 0, PWOSPF_PROTOCOL, intf->ip, OSPF_IP, len);
+        uint8_t *new_payload = add_IPv4_header(payload, 0, PWOSPF_PROTOCOL, intf->ip, OSPF_IP, len); //Free'd below.
         send_packet_intf(intf, new_payload, intf->ip, OSPF_IP, len+20, FALSE, TRUE);
+        free(new_payload);
     }
+    free(payload);
 }
 
 void send_LSU_packet(unsigned seq_no) {
@@ -508,7 +512,7 @@ void send_LSU_packet(unsigned seq_no) {
         }
     }
     unsigned len = PWOSPF_HEADER_LENGTH+LSU_HEADER_LENGTH+advert_no*LSU_AD_LENGTH;
-    byte *payload = malloc_or_die(len*sizeof(byte));
+    byte *payload = malloc_or_die(len*sizeof(byte));            //Free'd (below).
     struct pwospf_hdr *pwhdr = (void *)payload;
     PWHDR_VER_TYPE_SET(pwhdr, 2, TYPE_LSU);
     PWHDR_LEN_SET(pwhdr, htons(len));
@@ -547,12 +551,14 @@ void send_LSU_packet(unsigned seq_no) {
         neighbor_t *neighbor = intf->neighbor_list_head;
         while (neighbor != NULL) {
             if (neighbor->id != 0) {
-                byte *new_payload = add_IPv4_header(payload, 0, PWOSPF_PROTOCOL, intf->ip, neighbor->ip, len);
+                byte *new_payload = add_IPv4_header(payload, 0, PWOSPF_PROTOCOL, intf->ip, neighbor->ip, len); //Free'd (below).
                 send_packet_intf(intf, new_payload, intf->ip, neighbor->ip, len+20, FALSE, FALSE);
+                free(new_payload);
             }
             neighbor = neighbor->next_neighbor;
         }
     }
+    free(payload);
 }
 
 void generate_HELLO_thread() {
@@ -591,16 +597,21 @@ void generate_HELLO_thread() {
                     database_entry_t *database_entry = router_find_database_entry(router, router->router_id);
                     if (neighbor->id == 0 || !router_remove_link_from_database_entry(router, database_entry, neighbor->id)) {
                         debug_println("ERROR: removing link failed!");
+                        
                     }
-                    //free(neighbor);
-                    //neighbor = NULL;
+                    free(neighbor);
+                    neighbor = previous;
                     update_routing_table();
                     send_LSU_packet(seq_no);
                     last_LSU_send = get_time();
                     seq_no++;
                 }
                 previous = neighbor;
-                neighbor = neighbor->next_neighbor;
+                if (neighbor != NULL) {
+                    neighbor = neighbor->next_neighbor;
+                } else {
+                    neighbor = intf->neighbor_list_head;
+                }
             }
         }
         if (router->num_database > 0 && (router->added_links || (get_time() - last_LSU_send) > router->lsuint*1000)) {
@@ -719,7 +730,7 @@ route_t *router_find_route_entry( router_t *router, addr_ip_t dest, addr_ip_t gw
     pthread_mutex_lock(&router->route_table_lock);
     
     unsigned i;
-    printf("num_routes=%d\n", router->num_routes);
+    debug_println("num_routes=%d", router->num_routes);
     for (i = 0; i < router->num_routes; i++) {
         route_t *route_entry = &router->route[i];
         if (route_entry->prefix == dest && route_entry->next_hop == gw && route_entry->subnet_mask == mask

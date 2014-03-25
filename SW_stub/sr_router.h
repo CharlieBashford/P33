@@ -25,11 +25,27 @@ struct router_t;
 #include "sr_common.h"
 #include "sr_interface.h"
 #include "sr_work_queue.h"
+#include "lwtcp/lwip/cc.h"
 
 #define ARP_ETHERTYPE 0x0806
 #define IPV4_ETHERTYPE 0x0800
 
 #define OSPF_IP make_ip_addr("224.0.0.5")
+
+struct eth_hdr {
+    addr_mac_t _dest;
+    addr_mac_t _src;
+    PACK_STRUCT_FIELD(uint16_t _eth_type);
+} PACK_STRUCT_STRUCT;
+
+#define ETH_DEST(hdr) ((hdr)->_dest)
+#define ETH_SRC(hdr) ((hdr)->_src)
+#define ETH_TYPE(hdr) ((hdr)->_eth_type)
+
+#define ETH_DEST_SET(hdr, dest) (hdr)->_dest = (dest)
+#define ETH_SRC_SET(hdr, src) (hdr)->_src = (src)
+#define ETH_TYPE_SET(hdr, eth_type) (hdr)->_eth_type = (eth_type)
+
 
 /** holds info about a router's route */
 typedef struct {

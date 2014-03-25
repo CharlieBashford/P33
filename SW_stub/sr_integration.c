@@ -122,7 +122,7 @@ void sr_integ_hw_setup( struct sr_instance* sr ) {
         interface_t *intf = &router->interface[i];
         /* Adding neighbor for interface */
         debug_println("Adding new neighbor for intf");
-        neighbor_t *neighbor = malloc(sizeof(neighbor_t));
+        neighbor_t *neighbor = malloc(sizeof(neighbor_t)); //Free'd (in generate_HELLO_thread).
         neighbor->time_last = get_time();
         neighbor->ip = intf->ip;
         neighbor->id = 0;
@@ -235,7 +235,7 @@ route_t *sr_integ_findsrcroute(uint32_t dest /* nbo */) {
     unsigned i, best_i;
     for (i = 0; i < router->num_routes; i++) {
         match = ~(dest ^ route_table[i].prefix) & route_table[i].subnet_mask;
-        //printf("match = %04X, best = %04X, best_dynamic = %d route_table.dynamic = %d\n", match, best, best_dynamic, route_table[i].dynamic );
+        //debug_println("match = %04X, best = %04X, best_dynamic = %d route_table.dynamic = %d", match, best, best_dynamic, route_table[i].dynamic );
         if (match == route_table[i].subnet_mask && (route_table[i].dynamic > best_dynamic || match > best)) {
             best = match;
             best_i = i;
@@ -299,8 +299,10 @@ uint32_t sr_integ_ip_output(uint8_t* payload /* given */,
                             uint32_t dest, /* nbo */
                             int len) {
     
-    payload = add_IPv4_header(payload, 0, proto, src, dest, len);
+    uint8_t *temp = add_IPv4_header(payload, 0, proto, src, dest, len);
+    free(payload);
     
+    payload = temp;
     addr_ip_t target = sr_integ_findnextip(dest);
     char src_str[STRLEN_IP], target_str[STRLEN_IP];
     ip_to_string(src_str, src);

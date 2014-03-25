@@ -21,7 +21,7 @@
 #include "sha256.h"
 
 void handle_IPv4_packet(packet_info_t *pi) {
-    printf("Packet is IPv4\n");
+    debug_println("Packet is IPv4");
     /*unsigned i;
      for (i = 0; i < pi->len; i += 2)
      printf("%02X%02X ", *(pi->packet+i),*(pi->packet+i+1));
@@ -31,10 +31,10 @@ void handle_IPv4_packet(packet_info_t *pi) {
     
     uint8_t IHL = IPH_HL(iphdr);
     if (IHL > 5) {
-        printf("Options in IPv4 packet, dropping packet!\n");
+        debug_println("Options in IPv4 packet, dropping packet!");
         return;
     } else if (IHL < 5) {
-        printf("Incomplete packet, dropping packet!\n");
+        debug_println("Incomplete packet, dropping packet!");
         return;
     }
     
@@ -43,19 +43,19 @@ void handle_IPv4_packet(packet_info_t *pi) {
      for (i = 0; i < pi->len; i += 2)
      printf("%02X%02X ", *(pi->packet+i),*(pi->packet+i+1));
      printf("\n");
-     printf("Incomplete packet, missing %d bytes, dropping packed!\n", (ntohs(IPH_LEN(iphdr))-(pi->len-IPV4_HEADER_OFFSET)));
+     debug_println("Incomplete packet, missing %d bytes, dropping packed!\n", (ntohs(IPH_LEN(iphdr))-(pi->len-IPV4_HEADER_OFFSET)));
      return;
      }*/
     
     if (calc_checksum(pi->packet+IPV4_HEADER_OFFSET, 20)) {
-        printf("Checksum failed, dropping packet!\n");
+        debug_println("Checksum failed, dropping packet!");
         return;
     }
     
     char ip_str[16];
     ip_to_string(ip_str, IPH_DEST(iphdr));
     if (router_lookup_interface_via_ip(get_router(), IPH_DEST(iphdr)) || IPH_DEST(iphdr) == OSPF_IP) {
-        printf("Packet for router!\n");
+        debug_println("Packet for router!");
         uint8_t protocol = IPH_PROTO(iphdr);
         
         switch (protocol) {
@@ -79,7 +79,7 @@ void handle_IPv4_packet(packet_info_t *pi) {
                 return;
                 break;
             default:
-                printf("Generating protocol unreachable packet!\n");
+                debug_println("Generating protocol unreachable packet!");
                 if (generate_response_ICMP_packet(pi, 3, 2)) return;
                 iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
                 break;
@@ -90,7 +90,7 @@ void handle_IPv4_packet(packet_info_t *pi) {
     if (IPH_TTL(iphdr) > 1) {
         IPH_TTL_DEC(iphdr);
     } else {
-        printf("Generating time exceeded packet!\n");
+        debug_println("Generating time exceeded packet!");
         if (generate_response_ICMP_packet(pi, 11, 0)) return;
         iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
     }
@@ -110,12 +110,18 @@ void handle_IPv4_packet(packet_info_t *pi) {
             debug_println("There is a secret, going to do ESP!");
             protocol = ESP_PROTOCOL;
         }
-        pi->packet = add_IPv4_header(pi->packet, IPV4_HEADER_OFFSET, protocol, policy->local_end, policy->remote_end, pi->len);
+        uint8_t *temp = add_IPv4_header(pi->packet, IPV4_HEADER_OFFSET, protocol, policy->local_end, policy->remote_end, pi->len);
+        free(pi->packet);
+        
+        pi->packet = temp;
         pi->len += IPV4_HEADER_LENGTH;
         iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
         
         if (policy->secret != NULL && strlen(policy->secret) != 0) {
-            pi->packet = add_ESP_packet(pi->packet, IPV4_HEADER_OFFSET+IPV4_HEADER_LENGTH, 0, 0, 0, IP_ENCAP_PROTOCOL, policy->secret, pi->len);
+            uint8_t *temp = add_ESP_packet(pi->packet, IPV4_HEADER_OFFSET+IPV4_HEADER_LENGTH, 0, 0, 0, IP_ENCAP_PROTOCOL, policy->secret, pi->len);
+            free(temp);
+            
+            pi->packet = temp;
             pi->len += ESP_HEADER_LENGTH + ESP_TAIL_LENGTH; //incl padding
             iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
         }
@@ -132,14 +138,14 @@ void handle_IPv4_packet(packet_info_t *pi) {
     addr_ip_t target_ip = sr_integ_findnextip(IPH_DEST(iphdr));
     char target_ip_str[16];
     ip_to_string(target_ip_str, target_ip);
-    printf("Sending packet to %s via %s\n",  ip_str, target_ip_str);
+    debug_println("Sending packet to %s via %s",  ip_str, target_ip_str);
     send_packet(pi->packet+14, IPH_SRC(iphdr), target_ip, pi->len-14, FALSE, FALSE);
 }
 
 void handle_TCP_packet(packet_info_t *pi) {
-    printf("Recieved a TCP packet:\n");//Look for port
+    debug_println("Recieved a TCP packet:");//Look for port
     sr_transport_input(pi->packet+IPV4_HEADER_OFFSET);
-    printf("Called sr_transport_input\n");
+    debug_println("Called sr_transport_input");
 }
 
 uint16_t calc_checksum(byte *header, int len) {
@@ -161,7 +167,7 @@ uint8_t *add_IPv4_header(uint8_t *payload, unsigned offset, uint8_t  proto, uint
      printf("(%d %02X) ", i, (int)*(payload+i));
      printf("\n");*/
     
-    uint8_t *ipv4_packet = malloc_or_die((IPV4_HEADER_LENGTH+len)*sizeof(uint8_t));
+    uint8_t *ipv4_packet = malloc_or_die((IPV4_HEADER_LENGTH+len)*sizeof(uint8_t)); //Needs to be free'd outside call.
     struct ip_hdr *iphdr = (void *)ipv4_packet + offset;
     
     IPH_VHLTOS_SET(iphdr, 4, 5, 16);
@@ -179,14 +185,13 @@ uint8_t *add_IPv4_header(uint8_t *payload, unsigned offset, uint8_t  proto, uint
     memcpy(ipv4_packet, payload, offset);
     memcpy(ipv4_packet+offset+IPV4_HEADER_LENGTH, payload+offset, len-offset);
 
-    free(payload);
     return ipv4_packet;
 }
 
 
 
 void handle_no_route_to_host(packet_info_t *pi) {
-    printf("No route to host!\n");
+    debug_println("No route to host!");
     
     if (generate_response_ICMP_packet(pi, 3, 0)) return;
     struct ip_hdr *iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
@@ -197,7 +202,7 @@ void handle_no_route_to_host(packet_info_t *pi) {
     addr_ip_t target_ip = sr_integ_findnextip(IPH_DEST(iphdr));
     char target_ip_str[16];
     ip_to_string(target_ip_str, target_ip);
-    printf("target_ip=%s\n", target_ip_str);
+    debug_println("target_ip=%s", target_ip_str);
     
     send_packet(pi->packet+14, IPH_SRC(iphdr), target_ip, pi->len-14, FALSE, FALSE);
 }
