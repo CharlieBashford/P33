@@ -50,6 +50,8 @@ typedef struct {
     addr_ip_t local_end;
     addr_ip_t remote_end;
     const char *secret;
+    uint8_t encrypt_rot;
+    uint32_t spi;
 } gross_policy_t;
 
 typedef struct {

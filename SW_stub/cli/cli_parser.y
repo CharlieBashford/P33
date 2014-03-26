@@ -75,8 +75,8 @@ gross_option_t gopt;
 #define SETC_RT_ADD(func,dest,xgw,mask,intf) SETC_RT(func,dest,mask); grt.gw=xgw; grt.intf_name=intf
 
 #define SETC_POL(func,xsrc_ip,xsrc_mask,xdest_ip,xdest_mask,xlocal_end,xremote_end) SETC_FUNC1(func); gobj.data=&gpol; gpol.src_ip=xsrc_ip; gpol.src_mask=xsrc_mask; gpol.dest_ip=xdest_ip; gpol.dest_mask=xdest_mask; gpol.local_end=xlocal_end; gpol.remote_end=xremote_end
-#define SETC_POL_ADD(func,src_ip,srp_mask,dest_ip,dest_mask,local_end,remote_end,xscrt) SETC_POL(func,src_ip,srp_mask,dest_ip,dest_mask,local_end,remote_end); gpol.secret=xscrt
-#define SETC_POL_ADD_PRE(func,src_ip,srp_mask_pre,dest_ip,dest_mask_pre,local_end,remote_end,scrt) SETC_POL_ADD(func,src_ip,prefix_to_mask(srp_mask_pre),dest_ip,prefix_to_mask(dest_mask_pre),local_end,remote_end,scrt)
+#define SETC_POL_ADD(func,src_ip,srp_mask,dest_ip,dest_mask,local_end,remote_end,xscrt,xrot,xspi) SETC_POL(func,src_ip,srp_mask,dest_ip,dest_mask,local_end,remote_end); gpol.secret=xscrt; gpol.encrypt_rot=xrot; gpol.spi=xspi
+#define SETC_POL_ADD_PRE(func,src_ip,srp_mask_pre,dest_ip,dest_mask_pre,local_end,remote_end,scrt,rot,spi) SETC_POL_ADD(func,src_ip,prefix_to_mask(srp_mask_pre),dest_ip,prefix_to_mask(dest_mask_pre),local_end,remote_end,scrt,rot,spi)
 
 #define SETC_IP(func,xip) SETC_FUNC1(func); gobj.data=&gip; gip.ip=xip
 #define SETC_IP_INT(func,xip,xn) SETC_FUNC1(func); gobj.data=&giip; giip.ip=xip; giip.count=xn
@@ -282,17 +282,21 @@ ManipTypeIPPolicy : WrongOrQ                       { HELP(HELP_MANIP_IP_POLICY);
                   | T_PURGE TMIorQ                 { HELP(HELP_MANIP_IP_POLICY_PURGE_ALL); }
                   ;
 
-PolicyAddOrQ : HelpOrQ                                                    { HELP(HELP_MANIP_IP_POLICY_ADD); }
-             | {ERR_IP} error                                             { HELP(HELP_MANIP_IP_POLICY_ADD); }
-             | TAV_IP {ERR_IP} error                                      { HELP(HELP_MANIP_IP_POLICY_ADD); }
-             | TAV_IP TAV_IP {ERR_IP} error                               { HELP(HELP_MANIP_IP_POLICY_ADD); }
-             | TAV_IP TAV_IP TAV_IP {ERR_IP} error                        { HELP(HELP_MANIP_IP_POLICY_ADD); }
-             | TAV_IP TAV_IP TAV_IP TAV_IP {ERR_IP} error                 { HELP(HELP_MANIP_IP_POLICY_ADD); }
-             | TAV_IP T_SLASH TAV_INT TAV_IP T_SLASH TAV_INT TAV_IP TAV_IP  { SETC_POL_ADD_PRE(cli_manip_ip_policy_add,$1,$3,$4,$6,$7,$8,""); }
-             | TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP                  { SETC_POL_ADD(cli_manip_ip_policy_add,$1,$2,$3,$4,$5,$6,""); }
-             | TAV_IP T_SLASH TAV_INT TAV_IP T_SLASH TAV_INT TAV_IP TAV_IP TAV_STR  { SETC_POL_ADD_PRE(cli_manip_ip_policy_add,$1,$3,$4,$6,$7,$8,$9); }
-             | TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_STR          { SETC_POL_ADD(cli_manip_ip_policy_add,$1,$2,$3,$4,$5,$6,$7); }
-             | TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_STR TMIorQ   { HELP(HELP_MANIP_IP_POLICY_ADD); }
+PolicyAddOrQ : HelpOrQ                                                                          { HELP(HELP_MANIP_IP_POLICY_ADD); }
+             | {ERR_IP} error                                                                   { HELP(HELP_MANIP_IP_POLICY_ADD); }
+             | TAV_IP {ERR_IP} error                                                            { HELP(HELP_MANIP_IP_POLICY_ADD); }
+             | TAV_IP TAV_IP {ERR_IP} error                                                     { HELP(HELP_MANIP_IP_POLICY_ADD); }
+             | TAV_IP TAV_IP TAV_IP {ERR_IP} error                                              { HELP(HELP_MANIP_IP_POLICY_ADD); }
+             | TAV_IP TAV_IP TAV_IP TAV_IP {ERR_IP} error                                       { HELP(HELP_MANIP_IP_POLICY_ADD); }
+             | TAV_IP T_SLASH TAV_INT TAV_IP T_SLASH TAV_INT TAV_IP TAV_IP                      { SETC_POL_ADD_PRE(cli_manip_ip_policy_add,$1,$3,$4,$6,$7,$8,"",0,0); }
+             | TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP                                        { SETC_POL_ADD(cli_manip_ip_policy_add,$1,$2,$3,$4,$5,$6,"",0,0); }
+             | TAV_IP T_SLASH TAV_INT TAV_IP T_SLASH TAV_INT TAV_IP TAV_IP TAV_STR              { SETC_POL_ADD_PRE(cli_manip_ip_policy_add,$1,$3,$4,$6,$7,$8,$9,0,0); }
+             | TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_STR                                { SETC_POL_ADD(cli_manip_ip_policy_add,$1,$2,$3,$4,$5,$6,$7,0,0); }
+             | TAV_IP T_SLASH TAV_INT TAV_IP T_SLASH TAV_INT TAV_IP TAV_IP TAV_INT              { SETC_POL_ADD_PRE(cli_manip_ip_policy_add,$1,$3,$4,$6,$7,$8,"",$9,0); }
+             | TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_INT                                { SETC_POL_ADD(cli_manip_ip_policy_add,$1,$2,$3,$4,$5,$6,"",$7,0); }
+             | TAV_IP T_SLASH TAV_INT TAV_IP T_SLASH TAV_INT TAV_IP TAV_IP TAV_STR TAV_INT      { SETC_POL_ADD_PRE(cli_manip_ip_policy_add,$1,$3,$4,$6,$7,$8,$9,$10,0); }
+             | TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_STR TAV_INT                        { SETC_POL_ADD(cli_manip_ip_policy_add,$1,$2,$3,$4,$5,$6,$7,$8,0); }
+             | TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_IP TAV_STR TMIorQ                         { HELP(HELP_MANIP_IP_POLICY_ADD); }
              ;
 
 PolicyDelOrQ : HelpOrQ                                           { HELP(HELP_MANIP_IP_POLICY_DEL); }

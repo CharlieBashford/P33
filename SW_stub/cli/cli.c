@@ -362,7 +362,7 @@ void cli_show_ip_route() {
 }
 
 void cli_show_ip_policy() {
-    cli_send_str("Policy Table:\n Source Subnet \tDest Subnet \tLocal End \tRemote End\tSecret \t\tAlgorithm\n");
+    cli_send_str("Policy Table:\n Source Subnet \tDest Subnet \tLocal End \tRemote End\tSecret \t\tEncrypt Rot\n");
     router_t *router = get_router();
     
     unsigned i;
@@ -375,7 +375,7 @@ void cli_show_ip_policy() {
         ip_to_string(remote_ip_str, router->policy[i].remote_end);
         
         char buf[200];
-        sprintf(buf, "%s \t%s \t%s \t%s \t%s     \tNone\n", src_subnet_str, dest_subnet_str, local_ip_str, remote_ip_str, router->policy[i].secret);
+        sprintf(buf, "%s \t%s \t%s \t%s \t%s     \t%d\n", src_subnet_str, dest_subnet_str, local_ip_str, remote_ip_str, router->policy[i].secret, router->policy[i].encrypt_rot);
         cli_send_str(buf);
     }
 }
@@ -594,7 +594,7 @@ void cli_manip_ip_route_purge_sta() {
 void cli_manip_ip_policy_add( gross_policy_t* data ) {
     policy_t *policy = router_find_policy_entry(get_router(), data->src_ip, data->src_mask, data->dest_ip, data->dest_mask, data->local_end, data->remote_end);
     if (policy == NULL) {
-        router_add_policy(get_router(), data->src_ip, data->src_mask, data->dest_ip, data->dest_mask, data->local_end, data->remote_end, data->secret);
+        router_add_policy(get_router(), data->src_ip, data->src_mask, data->dest_ip, data->dest_mask, data->local_end, data->remote_end, data->secret, data->encrypt_rot, data->spi);
     } else
         cli_send_str("Policy entry already exists.");
 }

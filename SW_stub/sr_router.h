@@ -100,7 +100,8 @@ typedef struct policy_t {
     addr_ip_t local_end;
     addr_ip_t remote_end;
     char *secret;
-    unsigned algor;
+    uint8_t encrypt_rot;
+    uint32_t spi;
 } policy_t;
 
 /** max number of interfaces the router max have */
