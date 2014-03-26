@@ -127,7 +127,7 @@ void handle_not_repsponding_to_arp(byte *payload, unsigned len) {
     ip_to_string(target_ip_str, target_ip);
     debug_println("target_ip=%s", target_ip_str);
     
-    send_packet(pi->packet+IPV4_HEADER_OFFSET, IPH_SRC(iphdr), target_ip, pi->len-IPV4_HEADER_OFFSET, FALSE, FALSE);
+    //send_packet(pi->packet+IPV4_HEADER_OFFSET, IPH_SRC(iphdr), target_ip, pi->len-IPV4_HEADER_OFFSET, FALSE, FALSE);
 
     free(pi->packet);
     free(pi);

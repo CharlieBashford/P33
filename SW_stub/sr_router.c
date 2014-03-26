@@ -75,7 +75,9 @@ void router_destroy( router_t* router ) {
     pthread_mutex_destroy( &router->intf_lock );
     pthread_mutex_destroy( &router->route_table_lock );
     pthread_mutex_destroy( &router->arp_cache_lock );
-
+    pthread_mutex_destroy( &router->pending_arp_lock );
+    pthread_mutex_destroy( &router->database_lock );
+    pthread_mutex_destroy( &router->policy_lock );
 
 #ifdef _CPUMODE_
     closeDescriptor( &router->nf );
@@ -106,7 +108,7 @@ bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t d
     
     addr_mac_t src_mac = intf->mac;
     
-    uint8_t *packet = malloc_or_die((14+len)*sizeof(uint8_t));
+    uint8_t *packet = malloc_or_die((14+len)*sizeof(uint8_t)); //Free'd (before each return below).
     addr_mac_t dest_mac;
     
     if (!is_arp_packet && !is_hello_packet) {
@@ -149,6 +151,7 @@ bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t d
             
             pthread_mutex_unlock(&router->pending_arp_lock);
             debug_println("Finished with lock");
+            free(packet);
             return 0;
         }
         dest_mac = entry->mac;
@@ -178,6 +181,7 @@ bool send_packet_intf(interface_t *intf, byte *payload, uint32_t src, uint32_t d
     
     if (intf->enabled == FALSE) {
         debug_println("SENDING: DROPPING PACKET! Interface %s is disabled.", intf->name);
+        free(packet);
         return 0;
     }
     sr_integ_low_level_output(get_sr(), packet, len+14, intf);
