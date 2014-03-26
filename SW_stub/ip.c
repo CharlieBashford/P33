@@ -103,11 +103,18 @@ void handle_IPv4_packet(packet_info_t *pi) {
     if (policy != NULL) {
         debug_println("Found matching policy! (sending)");
         unsigned protocol;
-        if (policy->secret == NULL || strlen(policy->secret) == 0) {
-            debug_println("There is no secret, just doing IP tunneling!");
+        if ((policy->secret == NULL || strlen(policy->secret) == 0) && policy->encrypt_rot == 0) {
+            debug_println("There is no secret nor ecryption, just doing IP tunneling!");
             protocol = IP_ENCAP_PROTOCOL;
         } else {
-            debug_println("There is a secret, going to do ESP!");
+            if (policy->secret != NULL && strlen(policy->secret) != 0) {
+                if (policy->encrypt_rot != 0)
+                    debug_println("There is a secret and encryption, going to do ESP!");
+                else
+                    debug_println("There is a secret, going to do ESP!");
+            } else {
+                 debug_println("There is encryption, going to do ESP!");
+            }
             protocol = ESP_PROTOCOL;
         }
         uint8_t *temp = add_IPv4_header(pi->packet, IPV4_HEADER_OFFSET, protocol, policy->local_end, policy->remote_end, pi->len);
@@ -117,9 +124,9 @@ void handle_IPv4_packet(packet_info_t *pi) {
         pi->len += IPV4_HEADER_LENGTH;
         iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
         
-        if (policy->secret != NULL && strlen(policy->secret) != 0) {
-            uint8_t *temp = add_ESP_packet(pi->packet, IPV4_HEADER_OFFSET+IPV4_HEADER_LENGTH, 0, 0, 0, IP_ENCAP_PROTOCOL, policy->secret, pi->len);
-            free(temp);
+        if ((policy->secret != NULL && strlen(policy->secret) != 0) || policy->encrypt_rot != 0) {
+            uint8_t *temp = add_ESP_packet(pi->packet, IPV4_HEADER_OFFSET+IPV4_HEADER_LENGTH, 0, 0, 0, IP_ENCAP_PROTOCOL, policy->secret, policy->encrypt_rot, pi->len);
+            free(pi->packet);
             
             pi->packet = temp;
             pi->len += ESP_HEADER_LENGTH + ESP_TAIL_LENGTH; //incl padding

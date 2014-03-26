@@ -74,9 +74,12 @@ gross_option_t gopt;
 #define SETC_RT(func,xdest,xmask) SETC_FUNC1(func); gobj.data=&grt; grt.dest=xdest; grt.mask=xmask
 #define SETC_RT_ADD(func,dest,xgw,mask,intf) SETC_RT(func,dest,mask); grt.gw=xgw; grt.intf_name=intf
 
-#define SETC_POL(func,xsrc_ip,xsrc_mask,xdest_ip,xdest_mask,xlocal_end,xremote_end) SETC_FUNC1(func); gobj.data=&gpol; gpol.src_ip=xsrc_ip; gpol.src_mask=xsrc_mask; gpol.dest_ip=xdest_ip; gpol.dest_mask=xdest_mask; gpol.local_end=xlocal_end; gpol.remote_end=xremote_end
-#define SETC_POL_ADD(func,src_ip,srp_mask,dest_ip,dest_mask,local_end,remote_end,xscrt,xrot,xspi) SETC_POL(func,src_ip,srp_mask,dest_ip,dest_mask,local_end,remote_end); gpol.secret=xscrt; gpol.encrypt_rot=xrot; gpol.spi=xspi
-#define SETC_POL_ADD_PRE(func,src_ip,srp_mask_pre,dest_ip,dest_mask_pre,local_end,remote_end,scrt,rot,spi) SETC_POL_ADD(func,src_ip,prefix_to_mask(srp_mask_pre),dest_ip,prefix_to_mask(dest_mask_pre),local_end,remote_end,scrt,rot,spi)
+#define SETC_POL(func,xsrc_ip,xsrc_mask,xdest_ip,xdest_mask,xlocal_end,xremote_end) \
+	SETC_FUNC1(func); gobj.data=&gpol; gpol.src_ip=xsrc_ip; gpol.src_mask=xsrc_mask; gpol.dest_ip=xdest_ip; gpol.dest_mask=xdest_mask; gpol.local_end=xlocal_end; gpol.remote_end=xremote_end
+#define SETC_POL_ADD(func,src_ip,srp_mask,dest_ip,dest_mask,local_end,remote_end,xscrt,xrot,xspi) \
+	SETC_POL(func,src_ip,srp_mask,dest_ip,dest_mask,local_end,remote_end); gpol.secret=xscrt; gpol.encrypt_rot=xrot; gpol.spi=xspi
+#define SETC_POL_ADD_PRE(func,src_ip,srp_mask_pre,dest_ip,dest_mask_pre,local_end,remote_end,scrt,rot,spi) \
+	SETC_POL_ADD(func,src_ip,prefix_to_mask(srp_mask_pre),dest_ip,prefix_to_mask(dest_mask_pre),local_end,remote_end,scrt,rot,spi)
 
 #define SETC_IP(func,xip) SETC_FUNC1(func); gobj.data=&gip; gip.ip=xip
 #define SETC_IP_INT(func,xip,xn) SETC_FUNC1(func); gobj.data=&giip; giip.ip=xip; giip.count=xn

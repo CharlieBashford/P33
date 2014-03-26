@@ -28,10 +28,12 @@ struct esp_hdr {
 #define ESP_SPI_SET(hdr, spi) (hdr)->_spi = (htonl(spi))
 #define ESP_SEQ_NO_SET(hdr, seq_no) (hdr)->_seq_no = (htonl(seq_no))
 
+#define ICV_LENGTH 16
+
 struct esp_tail {
     uint8_t _pad_len;
     uint8_t _next_hdr;
-    uint8_t icv[16];
+    uint8_t icv[ICV_LENGTH];
 } PACK_STRUCT_STRUCT;
 
 #define ESP_PAD_LEN(hdr) ((hdr)->_pad_len)
@@ -43,7 +45,7 @@ struct esp_tail {
 
 void handle_IP_ENCAP_packet(packet_info_t *pi);
 
-uint8_t *add_ESP_packet(uint8_t *payload, unsigned offset, uint32_t spi, uint32_t seq_no, uint8_t pad_len, uint8_t next_hdr, char *secret, int len);
+uint8_t *add_ESP_packet(uint8_t *payload, unsigned offset, uint32_t spi, uint32_t seq_no, uint8_t pad_len, uint8_t next_hdr, char *secret, uint8_t encrypt_rot, int len);
 
 void calc_sha256(uint8_t answer[16], uint8_t *payload, unsigned offset, unsigned len, char *secret);
 
@@ -51,7 +53,7 @@ void free_policy(policy_t *policy);
 
 policy_t *router_find_matching_policy_sending( router_t* router, addr_ip_t matching_src_ip, addr_ip_t matching_dest_ip);
 
-policy_t *router_find_matching_policy_receiving( router_t* router, addr_ip_t matching_src_ip, addr_ip_t matching_dest_ip, addr_ip_t matching_local_end, addr_ip_t matching_remote_end);
+policy_t *router_find_matching_policy_receiving( router_t* router, /*addr_ip_t matching_src_ip, addr_ip_t matching_dest_ip,*/ addr_ip_t matching_local_end, addr_ip_t matching_remote_end);
 
 void router_add_policy( router_t* router, addr_ip_t src_ip, addr_ip_t src_mask, addr_ip_t dest_ip, addr_ip_t dest_mask, addr_ip_t local_end, addr_ip_t remote_end, const char *secret, uint8_t encrypt_rot, uint32_t spi);
 

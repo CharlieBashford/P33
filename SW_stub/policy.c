@@ -20,12 +20,13 @@
 void handle_IP_ENCAP_packet(packet_info_t *pi) {
     debug_println("Packet has IP encapsulation!");
     struct ip_hdr *iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
-    unsigned offset = 0;
+    /*unsigned offset = 0;
     if (IPH_PROTO(iphdr) == ESP_PROTOCOL) {
         offset = ESP_HEADER_LENGTH;
     }
-    struct ip_hdr *seciphdr = (void *)pi->packet+IPV4_HEADER_OFFSET+IPV4_HEADER_LENGTH+offset;
-    policy_t *policy = router_find_matching_policy_receiving(get_router(), IPH_SRC(seciphdr), IPH_DEST(seciphdr), IPH_SRC(iphdr), IPH_DEST(iphdr));
+    
+    struct ip_hdr *seciphdr = (void *)pi->packet+IPV4_HEADER_OFFSET+IPV4_HEADER_LENGTH+offset;*/
+    policy_t *policy = router_find_matching_policy_receiving(get_router(), /*IPH_SRC(seciphdr), IPH_DEST(seciphdr),*/ IPH_SRC(iphdr), IPH_DEST(iphdr));
     if (policy != NULL) {
         
         unsigned protocol = IPH_PROTO(iphdr);
@@ -34,27 +35,49 @@ void handle_IP_ENCAP_packet(packet_info_t *pi) {
         iphdr = (void *)pi->packet+IPV4_HEADER_OFFSET;
 
         debug_println("Found matching policy! (recieving)");
-        if (policy->secret == NULL || strlen(policy->secret) == 0) {
-            debug_println("No secret found.");
+        if ((policy->secret == NULL || strlen(policy->secret) == 0) && policy->encrypt_rot == 0) {
+            if (policy->secret == NULL || strlen(policy->secret) == 0) {
+                debug_println("No secret found.");
+            }
+            if (policy->encrypt_rot == 0) {
+                debug_println("No encryption found.");
+            }
             if (protocol != IP_ENCAP_PROTOCOL) {
                 debug_println("Protocol on IP header is not IP encap protocol.");
                 return;
             }
         } else {
-            debug_println("A secret found.");
+            if (policy->secret != NULL && strlen(policy->secret) != 0) {
+                debug_println("A secret found in policy.");
+            }
+            if (policy->encrypt_rot != 0) {
+                debug_println("Encryption found in policy.");
+            }
             if (protocol != ESP_PROTOCOL) {
                 debug_println("Protocol on IP header is not ESP protocol.");
                 return;
             }
+            
+            
             //struct esp_hdr *esphdr = (void *)pi->packet+IPV4_HEADER_OFFSET+IPV4_HEADER_LENGTH;
             struct esp_tail *esptail = (void *)pi->packet+IPV4_HEADER_OFFSET+ESP_HEADER_LENGTH+(pi->len-(IPV4_HEADER_OFFSET+ESP_HEADER_LENGTH+ESP_TAIL_LENGTH));
-            uint8_t hash[16];
-            calc_sha256(hash, pi->packet, IPV4_HEADER_OFFSET, pi->len, policy->secret);
-            
-            if (memcmp(esptail->icv, hash, 16) != 0) {
-                debug_println("Failed authentication.");
-                return;
+            if (policy->secret != NULL && strlen(policy->secret) != 0) {
+                uint8_t hash[16];
+                calc_sha256(hash, pi->packet, IPV4_HEADER_OFFSET, pi->len, policy->secret);
+                
+                if (memcmp(esptail->icv, hash, 16) != 0) {
+                    debug_println("Failed authentication.");
+                    return;
+                }
             }
+            
+            if (policy->encrypt_rot != 0) {
+                unsigned i;
+                for (i = 0; i < pi->len-IPV4_HEADER_OFFSET-ICV_LENGTH; i++) {
+                    *(pi->packet+IPV4_HEADER_OFFSET+ESP_HEADER_LENGTH+i) = (*(pi->packet+IPV4_HEADER_OFFSET+ESP_HEADER_LENGTH+i) + 256 - policy->encrypt_rot) % 256;
+                }
+            }
+            
             memmove(pi->packet+IPV4_HEADER_OFFSET, pi->packet+IPV4_HEADER_OFFSET+ESP_HEADER_LENGTH, pi->len-(IPV4_HEADER_OFFSET+ESP_HEADER_LENGTH+ESP_TAIL_LENGTH));
             pi->len -= ESP_HEADER_LENGTH + ESP_TAIL_LENGTH;
         }
@@ -63,7 +86,7 @@ void handle_IP_ENCAP_packet(packet_info_t *pi) {
     }
 }
 
-uint8_t *add_ESP_packet(uint8_t *payload, unsigned offset, uint32_t spi, uint32_t seq_no, uint8_t pad_len, uint8_t next_hdr, char *secret, int len) {
+uint8_t *add_ESP_packet(uint8_t *payload, unsigned offset, uint32_t spi, uint32_t seq_no, uint8_t pad_len, uint8_t next_hdr, char *secret, uint8_t encrypt_rot, int len) {
     debug_println("Adding ESP packet.");
     
     uint8_t *esp_packet = malloc((ESP_PACKET_LENGTH(len)+pad_len)*sizeof(uint8_t)); //Needs to be Free'd outside call.
@@ -80,9 +103,20 @@ uint8_t *add_ESP_packet(uint8_t *payload, unsigned offset, uint32_t spi, uint32_
     ESP_PAD_LEN_SET(esptail, pad_len);
     ESP_NEXT_HDR_SET(esptail, next_hdr);
     
-    uint8_t hash[16];
-    calc_sha256(hash, esp_packet, offset, ESP_PACKET_LENGTH(len)+pad_len, secret);
-    memcpy(esptail->icv, hash, 16);
+    if (encrypt_rot != 0) {
+        unsigned i;
+        for (i = 0; i < len-offset+pad_len+ESP_TAIL_LENGTH-ICV_LENGTH; i++) {
+            *(esp_packet+offset+ESP_HEADER_LENGTH+i) = (*(esp_packet+offset+ESP_HEADER_LENGTH+i) + encrypt_rot) % 256;
+        }
+    }
+    
+    if (secret != NULL && strlen(secret) != 0) {
+        uint8_t hash[ICV_LENGTH];
+        calc_sha256(hash, esp_packet, offset, ESP_PACKET_LENGTH(len)+pad_len, secret);
+        memcpy(esptail->icv, hash, ICV_LENGTH);
+    } else {
+        memset(esptail->icv, 0, ICV_LENGTH);
+    }
 
     return esp_packet;
     
@@ -137,7 +171,7 @@ policy_t *router_find_matching_policy_sending( router_t* router, addr_ip_t match
     return NULL;
 }
 
-policy_t *router_find_matching_policy_receiving( router_t* router, addr_ip_t matching_src_ip, addr_ip_t matching_dest_ip, addr_ip_t matching_local_end, addr_ip_t matching_remote_end) {
+policy_t *router_find_matching_policy_receiving( router_t* router, /*addr_ip_t matching_src_ip, addr_ip_t matching_dest_ip,*/ addr_ip_t matching_local_end, addr_ip_t matching_remote_end) {
     pthread_mutex_lock(&router->policy_lock);
     
     
@@ -145,7 +179,7 @@ policy_t *router_find_matching_policy_receiving( router_t* router, addr_ip_t mat
     debug_println("num_policies=%d", router->num_policies);
     for (i = 0; i < router->num_policies; i++) {
         policy_t *policy = &router->policy[i];
-        if ((policy->src_ip == (matching_src_ip & policy->src_mask)) && (policy->dest_ip == (matching_dest_ip & policy->dest_mask)) && router_lookup_interface_via_ip(router, policy->remote_end) != NULL) {
+        if (/*(policy->src_ip == (matching_src_ip & policy->src_mask)) && (policy->dest_ip == (matching_dest_ip & policy->dest_mask)) &&*/ router_lookup_interface_via_ip(router, policy->remote_end) != NULL) {
             if (policy->local_end == matching_local_end && policy->remote_end == matching_remote_end) {
                 policy_t *new_policy = copy_policy(policy);
                 pthread_mutex_unlock(&router->policy_lock);
