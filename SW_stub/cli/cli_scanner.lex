@@ -172,7 +172,7 @@ static int copy_yytext( bool quoted ) {
     if( len > MAX_STR_LEN )
         len = MAX_STR_LEN;
 
-    strncpy( yylval.string, yytext+start, len );
+    strncpy( yylval.string, yytext+start, len+1 );
     return TAV_STR;
 }
 
