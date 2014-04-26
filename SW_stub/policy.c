@@ -236,7 +236,6 @@ void router_add_policy( router_t* router, addr_ip_t src_ip, addr_ip_t src_mask, 
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, ntohl(remote_end));
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, router->interface[0].hw_id);
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, router->num_interfaces + router->num_policies);
-    
 #endif
     
     router->num_policies += 1;
