@@ -646,13 +646,13 @@ void router_add_route( router_t* router, addr_ip_t prefix, addr_ip_t next_hop,
     unsigned j;
     if (!dynamic) {
         for (i = 0; i < router->num_routes; i++) {
-            if (!dynamic)
+            if (router->route[i].dynamic)
                 break;
         }
     }
     bool ended = TRUE;
     for (j = i; j < router->num_routes; j++) {
-        if (router->route[i].subnet_mask > subnet_mask || dynamic != router->route[i].dynamic) {
+        if (router->route[j].subnet_mask > subnet_mask || dynamic != router->route[j].dynamic) {
             ended = FALSE;
             break;
         }
