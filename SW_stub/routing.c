@@ -431,7 +431,7 @@ void update_routing_table() { // TODO:Mutli threading for interface and database
             if (*first_router_for_routes[i] == router->router_id) {
                 for (j = 0; j < router->num_interfaces; j++) {
                     if (routes[i]->subnet_no == (router->interface[j].ip & router->interface[j].subnet_mask)) {
-                        router_add_route(router, routes[i]->subnet_no, 0, router->interface[j].subnet_mask, router->interface[j].name, TRUE);
+                        router_add_route(router, routes[i]->subnet_no, 0, router->interface[j].subnet_mask, router->interface[j].name, TRUE, FALSE);
                         break;
                     }
                 }
@@ -442,7 +442,7 @@ void update_routing_table() { // TODO:Mutli threading for interface and database
                     while (neighbor != NULL) {
                         debug_println("neighbor->id=%lx, first_router_for_routes[%d]=%s", neighbor->id, i, router_id_str);
                         if (neighbor->id == *first_router_for_routes[i]) {
-                            router_add_route(router, routes[i]->subnet_no, neighbor->ip, routes[i]->mask, router->interface[j].name, TRUE);
+                            router_add_route(router, routes[i]->subnet_no, neighbor->ip, routes[i]->mask, router->interface[j].name, TRUE, FALSE);
                             found = TRUE;
                             break;
                         }
@@ -628,7 +628,7 @@ void generate_HELLO_thread() {
 }
 
 void router_add_route( router_t* router, addr_ip_t prefix, addr_ip_t next_hop,
-                      addr_ip_t subnet_mask, const char *intf_name, bool dynamic ) {
+                      addr_ip_t subnet_mask, const char *intf_name, bool dynamic, bool incoming) {
     route_t* route;
     
     pthread_mutex_lock(&router->route_table_lock);
@@ -693,7 +693,11 @@ void router_add_route( router_t* router, addr_ip_t prefix, addr_ip_t next_hop,
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, ntohl(prefix));
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, ntohl(subnet_mask));
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, ntohl(next_hop));
-    writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, interface_p->hw_oq);
+    byte hw = interface_p->hw_oq;
+    if (incoming) {
+        hw = interface_p->hw_id;
+    }
+    writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, hw);
     writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, router->num_interfaces+j);
     
     uint32_t prefix_out;
@@ -710,7 +714,7 @@ void router_add_route( router_t* router, addr_ip_t prefix, addr_ip_t next_hop,
     assert(prefix_out == ntohl(prefix));
     assert(subnet_mask_out == ntohl(subnet_mask));
     assert(next_hop_out == ntohl(next_hop));
-    assert(oq_out == interface_p->hw_oq);
+    assert(oq_out == hw);
     
 #endif
     
@@ -887,7 +891,7 @@ void sr_read_routes_from_file( router_t* router, const char* filename ) {
         if( inet_aton(str_mask,&subnet_mask) == 0 )
             die( "%s cannot convert subnet mask (%s) to valid IP", err, str_mask );
         
-        router_add_route(router, prefix.s_addr, next_hop.s_addr, subnet_mask.s_addr, str_intf_name, FALSE);
+        router_add_route(router, prefix.s_addr, next_hop.s_addr, subnet_mask.s_addr, str_intf_name, FALSE, FALSE);
     }
 }
 

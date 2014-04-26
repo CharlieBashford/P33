@@ -15,6 +15,7 @@
 #include "lwtcp/lwip/ip.h"
 #include "sr_integration.h"
 #include "sha256.h"
+#include "routing.h"
 
 
 void handle_IP_ENCAP_packet(packet_info_t *pi) {
@@ -213,6 +214,12 @@ void router_add_policy( router_t* router, addr_ip_t src_ip, addr_ip_t src_mask, 
     policy->secret = strdup(secret);
     policy->encrypt_rot = encrypt_rot;
     policy->spi = spi;
+    
+#ifdef _CPUMODE_
+    
+    router_add_route(router, dest_ip, 0, dest_mask, "nf0", FALSE, TRUE);
+    
+#endif
     
     router->num_policies += 1;
     

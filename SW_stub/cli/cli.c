@@ -566,7 +566,7 @@ void cli_manip_ip_ospf_up() {
 void cli_manip_ip_route_add( gross_route_t* data ) {
     route_t *route_entry = router_find_route_entry(get_router(), data->dest, data->gw, data->mask, data->intf_name);
     if (route_entry == NULL) {
-        router_add_route(get_router(), data->dest, data->gw, data->mask, data->intf_name, FALSE);
+        router_add_route(get_router(), data->dest, data->gw, data->mask, data->intf_name, FALSE, FALSE);
     } else
         cli_send_str("Route entry already exists.");
 }
