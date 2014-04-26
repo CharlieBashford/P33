@@ -212,7 +212,7 @@ addr_mac_t mac_lo_and_hi(uint32_t lo, uint32_t hi) {
 }
 
 void cli_show_hw_arp() {
-    cli_send_str("HW ARP Table:\nEntry Num\tIP  \t\tMac\n");
+    cli_send_str("HW ARP Table:\nEntry\tIP  \t\tMac\n");
     router_t *router = get_router();
     
     unsigned i;
@@ -228,7 +228,7 @@ void cli_show_hw_arp() {
             addr_mac_t mac = mac_lo_and_hi(low, high);
             mac_to_string(mac_str, &mac);
             char buf[100];
-            sprintf(buf, "%d \t\t%s  \t%s\n", i, ip_str, mac_str);
+            sprintf(buf, "%d \t%s  \t%s\n", i, ip_str, mac_str);
             cli_send_str(buf);
         }
     }
@@ -247,7 +247,7 @@ void cli_show_hw_intf() {
     readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_0_HIGH, &high);
     mac = mac_lo_and_hi(low, high);
     mac_to_string(mac_str, &mac);
-    sprintf(buf, "%d  \t\t%s\n", 0, mac_str);
+    sprintf(buf, "%d  \t%s\n", 0, mac_str);
     cli_send_str(buf);
     
     readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_1_LOW, &low);
