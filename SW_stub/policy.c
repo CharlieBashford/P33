@@ -216,7 +216,7 @@ void router_add_policy( router_t* router, addr_ip_t src_ip, addr_ip_t src_mask, 
     policy->spi = spi;
     
 #ifdef _CPUMODE_
-    unsigned i;
+    int i;
     for (i = router->num_routes-1; i >= 0; i--) { //Shift routes in hardware.
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, 0);
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, 0);
