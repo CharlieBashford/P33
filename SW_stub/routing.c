@@ -652,7 +652,7 @@ void router_add_route( router_t* router, addr_ip_t prefix, addr_ip_t next_hop,
     }
     bool ended = TRUE;
     for (j = i; j < router->num_routes; j++) {
-        if (router->route[j].subnet_mask > subnet_mask || dynamic != router->route[j].dynamic) {
+        if (router->route[j].subnet_mask <a subnet_mask || dynamic != router->route[j].dynamic) {
             ended = FALSE;
             break;
         }
