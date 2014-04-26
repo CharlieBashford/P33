@@ -210,6 +210,6 @@ void handle_no_route_to_host(packet_info_t *pi) {
     char target_ip_str[16];
     ip_to_string(target_ip_str, target_ip);
     debug_println("target_ip=%s", target_ip_str);
-    
+
     send_packet(pi->packet+14, IPH_SRC(iphdr), target_ip, pi->len-14, FALSE, FALSE);
 }
