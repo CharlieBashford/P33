@@ -658,7 +658,7 @@ void router_add_route( router_t* router, addr_ip_t prefix, addr_ip_t next_hop,
         }
     }
     if (!ended) {
-        for (i = router->num_routes; i > j; j++) {
+        for (i = router->num_routes; i > j; i--) {
             router->route[i] = router->route[i-1];
 #ifdef _CPUMODE_
             writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, 0);
@@ -670,7 +670,11 @@ void router_add_route( router_t* router, addr_ip_t prefix, addr_ip_t next_hop,
             writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, ntohl(router->route[i].prefix));
             writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, ntohl(router->route[i].subnet_mask));
             writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, ntohl(router->route[i].next_hop));
-            writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, router->route[i].interface.hw_oq);
+            byte hw = router->route[i].interface.hw_oq;
+            if (incoming) {
+                hw = router->route[i].interface.hw_id;
+            }
+            writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, hw);
             writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, router->num_interfaces+i);
 #endif
         }
@@ -687,6 +691,7 @@ void router_add_route( router_t* router, addr_ip_t prefix, addr_ip_t next_hop,
     route->subnet_mask = subnet_mask;
     route->interface = *interface_p;
     route->dynamic = dynamic;
+    route->incoming = incoming;
     
 #ifdef _CPUMODE_
     
