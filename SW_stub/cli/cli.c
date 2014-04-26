@@ -198,9 +198,9 @@ void cli_show_hw_about() {
         readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, &ip);
         if (ip != 0) {
             char ip_str[STRLEN_IP];
-            ip_to_string(ip_str, ip);
+            ip_to_string(ip_str, htonl(ip));
             char buf[100];
-            sprintf(buf, "%d 't%s", i, ip_str);
+            sprintf(buf, "%d \t%s\n", i, ip_str);
             cli_send_str(buf);
         }
     }
