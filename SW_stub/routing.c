@@ -712,11 +712,6 @@ void router_add_route( router_t* router, addr_ip_t prefix, addr_ip_t next_hop,
     assert(next_hop_out == ntohl(next_hop));
     assert(oq_out == interface_p->hw_oq);
     
-    free(prefix_out);
-    free(subnet_mask_out);
-    free(next_hop_out);
-    free(oq_out);
-    
 #endif
     
     router->num_routes += 1;
