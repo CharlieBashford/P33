@@ -23,6 +23,8 @@ module pktstate
 		input [C_S_AXIS_TUSER_WIDTH-1:0]	i_tuser,
 		input					i_tvalid,
 		input					i_tlast,
+		// Trigger reads from state FIFO(s).
+		input					i_rd_from_magic,
 
 		// Output signals we need elsewhere to trigger actions on.
 		// word1 is the ethernet header and initial IPv4 header.
@@ -30,7 +32,8 @@ module pktstate
 		// Assumption: no VLANs or similar.
 		output reg				o_pkt_word1,
 		output reg				o_pkt_word2,
-		output reg				o_pkt_is_from_cpu
+		output					o_pkt_is_from_cpu,
+		output					o_pktstate_valid
 	);
 
 	// ---------------------------------------------------------------------
@@ -48,15 +51,42 @@ module pktstate
 	reg [2:0]					state, next_state;
 	reg						r_pkt_is_from_cpu;
 	reg						r_pkt_is_from_cpu_next;
+	reg						r_pktstate_out_wr_en;
+	reg						r_pktstate_out_wr_en_next;
 
 	// Birds on the wires.
-	wire						pkt_is_from_cpu;
+	wire						w_pkt_is_from_cpu;
+	wire						w_pktstate_out_empty;
 
 	// Spaghetti
-	assign pkt_is_from_cpu				=
-		i_tuser[SRC_PORT_OFF+1] || i_tuser[SRC_PORT_OFF+3] ||
-		i_tuser[SRC_PORT_OFF+5] || i_tuser[SRC_PORT_OFF+7];
+	assign w_pkt_is_from_cpu			=
+	    i_tuser[SRC_PORT_OFF+1] | i_tuser[SRC_PORT_OFF+3] |
+	    i_tuser[SRC_PORT_OFF+5] | i_tuser[SRC_PORT_OFF+7];
+	assign o_pktstate_valid				= !w_pktstate_out_empty;
 
+
+	// ---------------------------------------------------------------------
+	// FIFO.
+	fallthrough_small_fifo
+	#(
+		.WIDTH(1),
+		.MAX_DEPTH_BITS(2)
+	) pktstate_out
+	// inputs and outputs
+	(
+		// Inputs
+		.clk		(clk),
+		.reset		(reset),
+		.din		(r_pkt_is_from_cpu),	// goes in on 2nd cy
+		.rd_en		(i_rd_from_magic),
+		.wr_en		(r_pktstate_out_wr_en),
+		// Outputs
+		.dout		(o_pkt_is_from_cpu),
+		.full		(),
+		.nearly_full	(),
+		.prog_full	(),
+		.empty		(w_pktstate_out_empty)
+	);
 
 	// ---------------------------------------------------------------------
 	// State machine.
@@ -64,9 +94,9 @@ module pktstate
 		// Make sure we always initialise to a (default) value.
 		o_pkt_word1			=	0;
 		o_pkt_word2			=	0;
-		o_pkt_is_from_cpu		=	0;
 		next_state			=	state;
 		r_pkt_is_from_cpu_next		=	r_pkt_is_from_cpu;
+		r_pktstate_out_wr_en_next	=	0;
 
 		case (state)
 		PKT_START: begin
@@ -74,12 +104,12 @@ module pktstate
 				// Signal stage output.
 				o_pkt_word1 = 1;
 
-				// Check if the packet is from CPU.
-				if (pkt_is_from_cpu) begin
+				if (w_pkt_is_from_cpu) begin
 					r_pkt_is_from_cpu_next = 1;
 				end else begin
 					r_pkt_is_from_cpu_next = 0;
 				end
+				r_pktstate_out_wr_en_next = 1;
 
 				// Adavance state.
 				next_state = PKT_WORD2;
@@ -90,7 +120,6 @@ module pktstate
 			if (i_tvalid) begin
 				// Signal stage output.
 				o_pkt_word2 = 1;
-				o_pkt_is_from_cpu = r_pkt_is_from_cpu_next;
 
 				// In case of min-size frame, must shortcut
 				// back to initial state awaiting new packet.
@@ -105,7 +134,7 @@ module pktstate
 		// Passthrough state; wait for the end of packet.
 		PKT_DATA: begin
 			// If we hit the end of packet, await a new one.
-			if (i_tvalid && i_tlast)
+			if (i_tvalid & i_tlast)
 				next_state = PKT_START;
 		end
 		endcase
@@ -119,9 +148,11 @@ module pktstate
 		if (reset) begin
 			state			<=	PKT_START;
 			r_pkt_is_from_cpu	<=	0;
+			r_pktstate_out_wr_en	<=	0;
 		end else begin
 			state			<=	next_state;
 			r_pkt_is_from_cpu	<=	r_pkt_is_from_cpu_next;
+			r_pktstate_out_wr_en	<=	r_pktstate_out_wr_en_next;
 		end
 	end
 

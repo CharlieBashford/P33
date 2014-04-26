@@ -518,26 +518,49 @@ module nf10_router_output_port_lookup
 	// ---------------------------------------------------------------------
 
 	// Wires
-	wire						w_eth_is_valid;
+	wire						w_eth_out_valid;
 	wire						w_pkt_word1;
 	wire						w_pkt_word2;
 	wire						w_pkt_is_from_cpu;
+	wire						w_pktstate_valid;
 	wire						w_eth_is_for_us;
 	wire						w_eth_is_bmcast;
 	wire						w_eth_is_arp;
 	wire						w_eth_is_ipv4;
 	wire						w_ipv4_can_handle_ipv4;
-	wire						w_ipv4_csum_ok;
 	wire						w_ipv4_ttl_ok;
+	wire						w_ipv4_out_valid;
+	wire						w_ipv4_csum_ok;
+	wire [15:0]					w_ipv4_csum_updated;
+	wire						w_ipv4_csum_out_valid;
 	wire [31:0]					w_ipv4_daddr;
 	wire						w_ipv4_local_lut_ipv4_daddr_is_local;
 	wire						w_ipv4_local_lut_ipv4_daddr_is_local_valid;
 	wire						w_ipv4_arp_lut_ipv4_eth_addr_found;
 	wire [47:0]					w_ipv4_arp_lut_ipv4_eth_addr;
+	wire						w_ipv4_arp_lut_valid;
 	wire						w_ipv4_fib_lut_nh_found;
 	wire [31:0]					w_ipv4_fib_lut_nh;
 	wire [7:0]					w_ipv4_fib_lut_tuser;
+	wire						w_ipv4_fib_lut_valid;
+	wire [31:0]					w_im_ipv4_fib_lut_nh;
+	wire						w_im_ipv4_fib_lut_valid;
 	wire						w_in_fifo_nearly_full;
+	wire						w_rd_from_magic;
+	wire [31:0]					w_im_ipv4_daddr;
+	wire						w_im_ipv4_daddr_valid;
+
+	// Stats counter wiring.
+	wire						w_counter_pkts_eth_bad_dst;
+	wire						w_counter_pkts_not_ip4;
+	wire						w_counter_pkts_to_cpu;
+	wire						w_counter_pkts_ip4_options;
+	wire						w_counter_pkts_ip4_bad_csum;
+	wire						w_counter_pkts_ip4_bad_ttl;
+	wire						w_counter_pkts_ip4_fwd;
+	wire						w_counter_pkts_ip4_local;
+	wire						w_counter_lpm_misses;
+	wire						w_counter_arp_misses;
 
 	// Spaghetti
 	//assign	...				= ...;
@@ -551,7 +574,8 @@ module nf10_router_output_port_lookup
 		.C_M_AXIS_DATA_WIDTH	(C_M_AXIS_DATA_WIDTH),
 		.C_M_AXIS_TUSER_WIDTH	(C_M_AXIS_TUSER_WIDTH),
 		.SRC_PORT_POS		(SRC_PORT_POS),
-		.DST_PORT_POS		(DST_PORT_POS)
+		.DST_PORT_POS		(DST_PORT_POS),
+		.MAC_WIDTH		(MAC_WIDTH)
 	) magic_inst
 	// inputs and outputs
 	(
@@ -570,21 +594,60 @@ module nf10_router_output_port_lookup
 		.M_AXIS_TUSER			(M_AXIS_TUSER),
 		.M_AXIS_TVALID			(M_AXIS_TVALID),
 		.M_AXIS_TLAST			(M_AXIS_TLAST),
+		// Misc
+		.i_mac0				(mac_0),
+		.i_mac1				(mac_1),
+		.i_mac2				(mac_2),
+		.i_mac3				(mac_3),
 		// State1
-		.i_is_from_cpu			(w_pkt_is_from_cpu),
-		.i_eth_is_valid			(w_eth_is_valid),
-		.i_eth_to_cpu			(~w_eth_is_ipv4 || w_eth_is_bmcast),
-		.i_ipv4_is_valid		(w_ipv4_csum_ok && w_ipv4_ttl_ok),
-		.i_ipv4_to_cpu			(~w_ipv4_can_handle_ipv4),
+		// - pktstate
+		.i_pkt_is_from_cpu		(w_pkt_is_from_cpu),
+		.i_pktstate_valid		(w_pktstate_valid),
+		// - eth
+		.i_eth_is_for_us		(w_eth_is_for_us),
+		.i_eth_is_bmcast		(w_eth_is_bmcast),
+		.i_eth_is_ipv4			(w_eth_is_ipv4),
+		.i_eth_out_valid		(w_eth_out_valid),
+		// - ipv4
+		.i_ipv4_can_handle_ipv4		(w_ipv4_can_handle_ipv4),
+		.i_ipv4_ttl_ok			(w_ipv4_ttl_ok),
+		.i_ipv4_daddr			(w_ipv4_daddr),
+		.i_ipv4_out_valid		(w_ipv4_out_valid),
+		.i_ipv4_csum_ok			(w_ipv4_csum_ok),		// Really in Stage2 but signal from stage 1 module
+		.i_ipv4_csum_updated		(w_ipv4_csum_updated),		// Really in Stage2 but signal from stage 1 module
+		.i_ipv4_csum_out_valid		(w_ipv4_csum_out_valid),	// Really in Stage2 but signal from stage 1 module
 		// State2
-		.i_ipv4_daddr_is_local_valid	(w_ipv4_local_lut_ipv4_daddr_is_local_valid),
+		// - ipv4_local_lut
 		.i_ipv4_daddr_is_local		(w_ipv4_local_lut_ipv4_daddr_is_local),
-		.i_ipv4_tuser			(w_ipv4_fib_lut_tuser),
+		.i_ipv4_daddr_is_local_valid	(w_ipv4_local_lut_ipv4_daddr_is_local_valid),
+		// - ipv4_fib_lut
+		.i_ipv4_fib_lut_nh_found	(w_ipv4_fib_lut_nh_found),
+		.i_ipv4_fib_lut_nh		(w_ipv4_fib_lut_nh),
+		.i_ipv4_fib_lut_tuser		(w_ipv4_fib_lut_tuser),
+		.i_ipv4_fib_lut_valid		(w_ipv4_fib_lut_valid),
 		// State3
-		.i_deth_addr_found		(w_ipv4_arp_lut_ipv4_eth_addr_found),
-		.i_deth_addr			(w_ipv4_arp_lut_ipv4_eth_addr),
+		// - ipv4_arp_lut
+		.i_ipv4_arp_lut_ipv4_eth_addr_found (w_ipv4_arp_lut_ipv4_eth_addr_found),
+		.i_ipv4_arp_lut_ipv4_eth_addr	(w_ipv4_arp_lut_ipv4_eth_addr),
+		.i_ipv4_arp_lut_valid		(w_ipv4_arp_lut_valid),
 		// outputs
-		.o_in_fifo_nearly_full		(w_in_fifo_nearly_full)
+		.o_rd_from_magic		(w_rd_from_magic),
+		.o_in_fifo_nearly_full		(w_in_fifo_nearly_full),
+		// Stats counters.
+		.o_counter_pkts_eth_bad_dst	(w_counter_pkts_eth_bad_dst),
+		.o_counter_pkts_not_ip4		(w_counter_pkts_not_ip4),
+		.o_counter_pkts_to_cpu		(w_counter_pkts_to_cpu),
+		.o_counter_pkts_ip4_options	(w_counter_pkts_ip4_options),
+		.o_counter_pkts_ip4_bad_csum	(w_counter_pkts_ip4_bad_csum),
+		.o_counter_pkts_ip4_bad_ttl	(w_counter_pkts_ip4_bad_ttl),
+		.o_counter_pkts_ip4_fwd		(w_counter_pkts_ip4_fwd),
+		.o_counter_pkts_ip4_local	(w_counter_pkts_ip4_local),
+		.o_counter_lpm_misses		(w_counter_lpm_misses),
+		.o_counter_arp_misses		(w_counter_arp_misses),
+		// ASSIGNMENT_STAGE9
+		.o_counter_pkts_arp		(w_counter_pkts_arp),
+		.o_counter_pkts_ip4		(w_counter_pkts_ip4),
+		.o_counter_pkts_ospf		(w_counter_pkts_osp)
 	);
 
 	// ---------------------------------------------------------------------
@@ -595,15 +658,17 @@ module nf10_router_output_port_lookup
 	) pktstate_inst
 	// inputs and outputs
 	(
-		.clk		(AXI_ACLK),
-		.reset		(~AXI_RESETN),
-		.i_tuser	(S_AXIS_TUSER),
-				// Keep in sync with input FIFO in magic.
-		.i_tvalid	(S_AXIS_TVALID & ~w_in_fifo_nearly_full),
-		.i_tlast	(S_AXIS_TLAST),
-		.o_pkt_word1	(w_pkt_word1),
-		.o_pkt_word2	(w_pkt_word2),
-		.o_pkt_is_from_cpu (w_pkt_is_from_cpu)
+		.clk				(AXI_ACLK),
+		.reset				(~AXI_RESETN),
+		.i_tuser			(S_AXIS_TUSER),
+						// Keep in sync with input FIFO in magic.
+		.i_tvalid			(S_AXIS_TVALID & ~w_in_fifo_nearly_full),
+		.i_tlast			(S_AXIS_TLAST),
+		.i_rd_from_magic		(w_rd_from_magic),
+		.o_pkt_word1			(w_pkt_word1),
+		.o_pkt_word2			(w_pkt_word2),
+		.o_pkt_is_from_cpu		(w_pkt_is_from_cpu),
+		.o_pktstate_valid		(w_pktstate_valid)
 	);
   
 	// ---------------------------------------------------------------------
@@ -616,20 +681,21 @@ module nf10_router_output_port_lookup
 	) eth_inst
 	// inputs and outputs
 	(
-		.clk		(AXI_ACLK),
-		.reset		(~AXI_RESETN),
-		.i_tdata	(S_AXIS_TDATA),
-		.i_tuser	(S_AXIS_TUSER),
-		.i_pkt_word1	(w_pkt_word1),
-		.i_mac0		(mac_0),
-		.i_mac1		(mac_1),
-		.i_mac2		(mac_2),
-		.i_mac3		(mac_3),
-		.o_is_for_us	(w_eth_is_for_us),		// XXX-BZ remove
-		.o_is_bmcast	(w_eth_is_bmcast),
-		.o_is_arp	(w_eth_is_arp),			// XXX-BZ antenna; unless we update the counter anyway
-		.o_is_ipv4	(w_eth_is_ipv4),
-		.o_is_valid	(w_eth_is_valid)
+		.clk				(AXI_ACLK),
+		.reset				(~AXI_RESETN),
+		.i_tdata			(S_AXIS_TDATA),
+		.i_tuser			(S_AXIS_TUSER),
+		.i_pkt_word1			(w_pkt_word1),
+		.i_mac0				(mac_0),
+		.i_mac1				(mac_1),
+		.i_mac2				(mac_2),
+		.i_mac3				(mac_3),
+		.i_rd_from_magic		(w_rd_from_magic),
+		.o_is_for_us			(w_eth_is_for_us),
+		.o_is_bmcast			(w_eth_is_bmcast),
+		.o_is_arp			(w_eth_is_arp),		// XXX-BZ antenna; unless we update the counter anyway
+		.o_is_ipv4			(w_eth_is_ipv4),
+		.o_eth_out_valid		(w_eth_out_valid)
 	);
 
 	// ---------------------------------------------------------------------
@@ -640,29 +706,37 @@ module nf10_router_output_port_lookup
 	) ipv4_inst
 	// inputs and outputs
 	(
-		.clk		(AXI_ACLK),
-		.reset		(~AXI_RESETN),
-		.i_tdata	(S_AXIS_TDATA),
-		.i_pkt_word1	(w_pkt_word1),
-		.i_pkt_word2	(w_pkt_word2),
-		.i_is_ipv4	(w_eth_is_ipv4),
-		.o_can_handle_ipv4 (w_ipv4_can_handle_ipv4),
-		.o_ipv4_csum_ok	(w_ipv4_csum_ok),
-		.o_ipv4_ttl_ok	(w_ipv4_ttl_ok),
-		.o_dst_ipv4	(w_ipv4_daddr)
+		.clk				(AXI_ACLK),
+		.reset				(~AXI_RESETN),
+		.i_tdata			(S_AXIS_TDATA),
+		.i_pkt_word1			(w_pkt_word1),
+		.i_pkt_word2			(w_pkt_word2),
+		.i_rd_from_magic		(w_rd_from_magic),
+		// IPv4 options, ttl, daddr.
+		.o_can_handle_ipv4		(w_ipv4_can_handle_ipv4),
+		.o_ipv4_ttl_ok			(w_ipv4_ttl_ok),
+		.o_ipv4_daddr			(w_ipv4_daddr),
+		.o_ipv4_out_valid		(w_ipv4_out_valid),
+		// Immediate outputs for LUTs.
+		.o_im_ipv4_daddr		(w_im_ipv4_daddr),
+		.o_im_ipv4_daddr_valid		(w_im_ipv4_daddr_valid),
+		// Csum 3cy
+		.o_ipv4_csum_ok			(w_ipv4_csum_ok),
+		.o_ipv4_csum_updated		(w_ipv4_csum_updated),
+		.o_ipv4_csum_out_valid		(w_ipv4_csum_out_valid)
 	);
 
 	// ---------------------------------------------------------------------
 	// Local IPv4 lookup
 	ipv4_local_lut
 	#(
-		.IPV4_LOCAL_LUT_ROWS		(IPV4_LOCAL_LUT_ROWS),
-		.IPV4_LOCAL_LUT_ROW_BITS	(IPV4_LOCAL_LUT_ROW_BITS)
+		.IPV4_LOCAL_LUT_ROWS	(IPV4_LOCAL_LUT_ROWS),
+		.IPV4_LOCAL_LUT_ROW_BITS (IPV4_LOCAL_LUT_ROW_BITS)
 	) ipv4_local_lut_inst
 	// inputs and outputs
 	(
-		.Bus2IP_Clk	(Bus2IP_Clk),
-		.Bus2IP_Reset	(~Bus2IP_Resetn),
+		.Bus2IP_Clk			(Bus2IP_Clk),
+		.Bus2IP_Reset			(~Bus2IP_Resetn),
 		.i_ipv4_local_lut_rd_req	(ipv4_local_lut_rd_req),
 		.o_ipv4_local_lut_rd_ack	(ipv4_local_lut_rd_ack),
 		.i_ipv4_local_lut_rd_addr	(ipv4_local_lut_rd_addr),
@@ -672,10 +746,11 @@ module nf10_router_output_port_lookup
 		.i_ipv4_local_lut_wr_addr	(ipv4_local_lut_wr_addr),
 		.i_ipv4_local_lut_wr_ipv4_addr	(ipv4_local_lut_wr_ipv4_addr),
 
-		.clk		(AXI_ACLK),
-		.reset		(~AXI_RESETN),
-		.i_ipv4_local_lut_ipv4_daddr	(w_ipv4_daddr),
-		.i_ipv4_local_lut_ipv4_daddr_valid (w_ipv4_csum_ok),
+		.clk				(AXI_ACLK),
+		.reset				(~AXI_RESETN),
+		.i_rd_from_magic		(w_rd_from_magic),
+		.i_ipv4_local_lut_ipv4_daddr	(w_im_ipv4_daddr),
+		.i_ipv4_local_lut_ipv4_daddr_valid (w_im_ipv4_daddr_valid),
 		.o_ipv4_local_lut_ipv4_daddr_is_local (w_ipv4_local_lut_ipv4_daddr_is_local),
 		.o_ipv4_local_lut_ipv4_daddr_is_local_valid (w_ipv4_local_lut_ipv4_daddr_is_local_valid)
 	);
@@ -684,13 +759,13 @@ module nf10_router_output_port_lookup
 	// IPv4 longest prefix match
 	ipv4_fib_lut
 	#(
-		.IPV4_FIB_LUT_ROWS		(IPV4_FIB_LUT_ROWS),
-		.IPV4_FIB_LUT_ROW_BITS		(IPV4_FIB_LUT_ROW_BITS)
+		.IPV4_FIB_LUT_ROWS	(IPV4_FIB_LUT_ROWS),
+		.IPV4_FIB_LUT_ROW_BITS	(IPV4_FIB_LUT_ROW_BITS)
 	) ipv4_fib_lut_inst
 	// inputs and outputs
 	(
-		.Bus2IP_Clk	(Bus2IP_Clk),
-		.Bus2IP_Reset	(~Bus2IP_Resetn),
+		.Bus2IP_Clk			(Bus2IP_Clk),
+		.Bus2IP_Reset			(~Bus2IP_Resetn),
 		.i_ipv4_fib_lut_rd_req		(ipv4_fib_lut_rd_req),
 		.o_ipv4_fib_lut_rd_ack		(ipv4_fib_lut_rd_ack),
 		.i_ipv4_fib_lut_rd_addr		(ipv4_fib_lut_rd_addr),
@@ -706,27 +781,31 @@ module nf10_router_output_port_lookup
 		.i_ipv4_fib_lut_wr_ipv4_mask	(ipv4_fib_lut_wr_ipv4_mask),
 		.i_ipv4_fib_lut_wr_ipv4_net	(ipv4_fib_lut_wr_ipv4_net),
 
-		.clk		(AXI_ACLK),
-		.reset		(~AXI_RESETN),
-		.i_ipv4_fib_lut_daddr		(w_ipv4_daddr),
-		.i_ipv4_fib_lut_daddr_valid	(w_ipv4_csum_ok),
+		.clk				(AXI_ACLK),
+		.reset				(~AXI_RESETN),
+		.i_rd_from_magic		(w_rd_from_magic),
+		.i_ipv4_fib_lut_daddr		(w_im_ipv4_daddr),
+		.i_ipv4_fib_lut_daddr_valid	(w_im_ipv4_daddr_valid),
 		.o_ipv4_fib_lut_nh_found	(w_ipv4_fib_lut_nh_found),
 		.o_ipv4_fib_lut_nh		(w_ipv4_fib_lut_nh),
-		.o_ipv4_fib_lut_tuser		(w_ipv4_fib_lut_tuser)
+		.o_ipv4_fib_lut_tuser		(w_ipv4_fib_lut_tuser),
+		.o_ipv4_fib_lut_valid		(w_ipv4_fib_lut_valid),
+		.o_im_ipv4_fib_lut_nh		(w_im_ipv4_fib_lut_nh),
+		.o_im_ipv4_fib_lut_valid	(w_im_ipv4_fib_lut_valid)
 	);
 
 	// ---------------------------------------------------------------------
 	// IPv4 ARP lookup
 	ipv4_arp_lut
 	#(
-		.IPV4_ARP_LUT_ROWS		(IPV4_ARP_LUT_ROWS),
-		.IPV4_ARP_LUT_ROW_BITS		(IPV4_ARP_LUT_ROW_BITS),
-		.MAC_WIDTH			(MAC_WIDTH)
+		.IPV4_ARP_LUT_ROWS	(IPV4_ARP_LUT_ROWS),
+		.IPV4_ARP_LUT_ROW_BITS	(IPV4_ARP_LUT_ROW_BITS),
+		.MAC_WIDTH		(MAC_WIDTH)
 	) ipv4_arp_lut_inst
 	// inputs and outputs
 	(
-		.Bus2IP_Clk	(Bus2IP_Clk),
-		.Bus2IP_Reset	(~Bus2IP_Resetn),
+		.Bus2IP_Clk			(Bus2IP_Clk),
+		.Bus2IP_Reset			(~Bus2IP_Resetn),
 		.i_ipv4_arp_lut_rd_req		(ipv4_arp_lut_rd_req),
 		.o_ipv4_arp_lut_rd_ack		(ipv4_arp_lut_rd_ack),
 		.i_ipv4_arp_lut_rd_addr		(ipv4_arp_lut_rd_addr),
@@ -738,46 +817,16 @@ module nf10_router_output_port_lookup
 		.i_ipv4_arp_lut_wr_eth_addr	(ipv4_arp_lut_wr_eth_addr),
 		.i_ipv4_arp_lut_wr_ipv4_addr	(ipv4_arp_lut_wr_ipv4_addr),
 
-		.clk		(AXI_ACLK),
-		.reset		(~AXI_RESETN),
-		.i_ipv4_arp_lut_ipv4_daddr_valid(w_ipv4_fib_lut_nh_found),
-		.i_ipv4_arp_lut_ipv4_daddr	(w_ipv4_fib_lut_nh),
+		.clk				(AXI_ACLK),
+		.reset				(~AXI_RESETN),
+		.i_rd_from_magic		(w_rd_from_magic),
+		.i_ipv4_arp_lut_ipv4_daddr_valid (w_im_ipv4_fib_lut_valid),
+		.i_ipv4_arp_lut_ipv4_daddr	(w_im_ipv4_fib_lut_nh),
 		.o_ipv4_arp_lut_ipv4_eth_addr_found (w_ipv4_arp_lut_ipv4_eth_addr_found),
-		.o_ipv4_arp_lut_ipv4_eth_addr	(w_ipv4_arp_lut_ipv4_eth_addr)
+		.o_ipv4_arp_lut_ipv4_eth_addr	(w_ipv4_arp_lut_ipv4_eth_addr),
+		.o_ipv4_arp_lut_valid		(w_ipv4_arp_lut_valid)
 	);
 
-
-	// ---------------------------------------------------------------------
-	// Stats counter wiring.
-
-	// Wires.
-	wire					w_counter_pkts_eth_bad_dst;
-	wire					w_counter_pkts_not_ip4;
-	wire					w_counter_pkts_to_cpu;
-	wire					w_counter_pkts_ip4_options;
-	wire					w_counter_pkts_ip4_bad_csum;
-	wire					w_counter_pkts_ip4_bad_ttl;
-	wire					w_counter_pkts_ip4_fwd;
-	wire					w_counter_pkts_ip4_local;
-	wire					w_counter_lpm_misses;
-	wire					w_counter_arp_misses;
-
-	// XXX-BZ we need better ends for these wires...
-	assign w_counter_pkts_eth_bad_dst		= 0;
-	assign w_counter_pkts_not_ip4			= 0;
-	assign w_counter_pkts_to_cpu			= 0;
-	assign w_counter_pkts_ip4_options		= 0;
-	assign w_counter_pkts_ip4_bad_csum		= 0;
-	assign w_counter_pkts_ip4_bad_ttl		= 0;
-	assign w_counter_pkts_ip4_fwd			= 0;
-	assign w_counter_pkts_ip4_local			= 0;
-	assign w_counter_lpm_misses			= 0;
-	assign w_counter_arp_misses			= 0;
-`ifdef ASSIGNMENT_STAGE9
-	assign w_counter_pkts_arp			= 0;
-	assign w_counter_pkts_ip4			= 0;
-	assign w_counter_pkts_ospf			= 0;
-`endif
 
   // ---------------------------------------------------------------------------
   // Clockwork:

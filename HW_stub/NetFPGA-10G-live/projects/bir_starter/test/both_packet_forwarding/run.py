@@ -48,6 +48,7 @@ for i in range(2):
     nftest_add_ARP_table_entry (i, nextHopIP[i], nextHopMAC)
 
 #clear the num pkts forwarded reg
+# XXX-BZ how would that work on a r/o register?
 nftest_regwrite(XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_BAR0_PKT_FORWARDED(), 0)
 
 nftest_barrier()

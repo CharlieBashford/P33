@@ -34,12 +34,14 @@ module ipv4_local_lut
 		input					clk,
 		input					reset,
 
+		// Trigger reads from state FIFO(s).
+		input					i_rd_from_magic,
 		// Destination address to lookup.
 		input [31:0]				i_ipv4_local_lut_ipv4_daddr,
 		input					i_ipv4_local_lut_ipv4_daddr_valid,
 		// Is the address local?
-		output reg				o_ipv4_local_lut_ipv4_daddr_is_local,
-		output reg				o_ipv4_local_lut_ipv4_daddr_is_local_valid
+		output					o_ipv4_local_lut_ipv4_daddr_is_local,
+		output					o_ipv4_local_lut_ipv4_daddr_is_local_valid
 	);
 
 	// ---------------------------------------------------------------------
@@ -54,7 +56,7 @@ module ipv4_local_lut
 	reg[31:0]		ipv4_local_addr_table [0:IPV4_LOCAL_LUT_ROWS-1];
 	reg[IPV4_LOCAL_LUT_ROW_BITS-1:0]	row_num_select;
 
-	integer					i, j;
+	integer					i;
 
 	// Spaghetti.
 	assign o_ipv4_local_lut_rd_ipv4_addr	=
@@ -90,59 +92,144 @@ module ipv4_local_lut
 	// for the moment.
 
 	// ---------------------------------------------------------------------
-	localparam				FIRST_STAGE	= 1'b1;
-	localparam				SECOND_STAGE	= 1'b0;
+	reg					r_is_local_s1, r_is_local_s2;
+	reg					r_is_local_s3, r_is_local_s4;
+	reg					r_ipv4_local_lut_ipv4_daddr_is_local;
+	reg					r_ipv4_local_lut_out_wr_en;
 
-	reg					state, state_next;
-	reg [31:0]				r_daddr;
+	integer					j, k, l, m;
+
+	// Birds on the wire.
+	wire [31:0]				w_daddr;
+	wire					w_ipv4_local_lut_out_empty;
+
+	// Spaghetti.
+	assign					w_daddr = i_ipv4_local_lut_ipv4_daddr;
+	assign					o_ipv4_local_lut_ipv4_daddr_is_local_valid = !w_ipv4_local_lut_out_empty;
+
+	// ---------------------------------------------------------------------
+	// FIFO.
+	fallthrough_small_fifo
+	#(
+		.WIDTH(1),
+		.MAX_DEPTH_BITS(2)
+	) ipv4_local_lut_out
+	// inputs and outputs
+	(
+		// Inputs
+		.clk		(clk),
+		.reset		(reset),
+		.din		(r_ipv4_local_lut_ipv4_daddr_is_local),
+		.rd_en		(i_rd_from_magic),
+		.wr_en		(r_ipv4_local_lut_out_wr_en),
+		// Outputs
+		.dout		(o_ipv4_local_lut_ipv4_daddr_is_local),
+		.full		(),
+		.nearly_full	(),
+		.prog_full	(),
+		.empty		(w_ipv4_local_lut_out_empty)
+	);
+
+
+	// ---------------------------------------------------------------------
+	// Do the table lookup in parallellellell.
+	always @(
+		w_daddr, i_ipv4_local_lut_ipv4_daddr, i_ipv4_local_lut_ipv4_daddr_valid,
+		ipv4_local_addr_table[0], ipv4_local_addr_table[1],
+		ipv4_local_addr_table[2], ipv4_local_addr_table[3],
+		ipv4_local_addr_table[4], ipv4_local_addr_table[5],
+		ipv4_local_addr_table[6], ipv4_local_addr_table[7]
+	) begin
+		r_is_local_s1 = 0;
+		if (i_ipv4_local_lut_ipv4_daddr_valid) begin
+			for (j = 0; j < 8; j = j + 1) begin
+				if (!r_is_local_s1 &&
+				    ipv4_local_addr_table[j] == w_daddr)
+				begin
+					r_is_local_s1 = 1;
+				end
+			end
+		end
+	end
+
+	always @(
+		w_daddr, i_ipv4_local_lut_ipv4_daddr, i_ipv4_local_lut_ipv4_daddr_valid,
+		ipv4_local_addr_table[8], ipv4_local_addr_table[9],
+		ipv4_local_addr_table[10], ipv4_local_addr_table[11],
+		ipv4_local_addr_table[12], ipv4_local_addr_table[13],
+		ipv4_local_addr_table[14], ipv4_local_addr_table[15]
+	) begin
+		r_is_local_s2 = 0;
+		if (i_ipv4_local_lut_ipv4_daddr_valid) begin
+			for (k = 8; k < 16; k = k + 1) begin
+				if (!r_is_local_s2 &&
+				    ipv4_local_addr_table[k] == w_daddr)
+				begin
+					r_is_local_s2 = 1;
+				end
+			end
+		end
+	end
+
+	always @(
+		w_daddr, i_ipv4_local_lut_ipv4_daddr, i_ipv4_local_lut_ipv4_daddr_valid,
+		ipv4_local_addr_table[16], ipv4_local_addr_table[17],
+		ipv4_local_addr_table[18], ipv4_local_addr_table[19],
+		ipv4_local_addr_table[20], ipv4_local_addr_table[21],
+		ipv4_local_addr_table[22], ipv4_local_addr_table[23]
+	) begin
+		r_is_local_s3 = 0;
+		if (i_ipv4_local_lut_ipv4_daddr_valid) begin
+			for (l = 16; l < 24; l = l + 1) begin
+				if (!r_is_local_s3 &&
+				    ipv4_local_addr_table[l] == w_daddr)
+				begin
+					r_is_local_s3 = 1;
+				end
+			end
+		end
+	end
+
+	always @(
+		w_daddr, i_ipv4_local_lut_ipv4_daddr, i_ipv4_local_lut_ipv4_daddr_valid,
+		ipv4_local_addr_table[24], ipv4_local_addr_table[25],
+		ipv4_local_addr_table[26], ipv4_local_addr_table[27],
+		ipv4_local_addr_table[28], ipv4_local_addr_table[29],
+		ipv4_local_addr_table[30], ipv4_local_addr_table[31]
+	) begin
+		r_is_local_s4 = 0;
+		if (i_ipv4_local_lut_ipv4_daddr_valid) begin
+			for (m = 24; m < 32; m = m + 1) begin
+				if (!r_is_local_s4 &&
+				    ipv4_local_addr_table[m] == w_daddr)
+				begin
+					r_is_local_s4 = 1;
+				end
+			end
+		end
+	end
 
 	// ---------------------------------------------------------------------
 	// Clocked work:
 	// Split into two states to (a) make synth more happy and (b) we want
 	// the delay anyway.
 	always @(posedge clk) begin
-		state_next				= state;
 
 		if (reset) begin
-			o_ipv4_local_lut_ipv4_daddr_is_local = 0;
-			o_ipv4_local_lut_ipv4_daddr_is_local_valid = 0;
-			state = FIRST_STAGE;
+			r_ipv4_local_lut_ipv4_daddr_is_local	= 0;
+			r_ipv4_local_lut_out_wr_en		= 0;
 
 		end else begin
-			case (state) 
-			FIRST_STAGE: begin
-				if (i_ipv4_local_lut_ipv4_daddr_valid) begin
-					o_ipv4_local_lut_ipv4_daddr_is_local = 0;
-					o_ipv4_local_lut_ipv4_daddr_is_local_valid = 0;
-					r_daddr = i_ipv4_local_lut_ipv4_daddr;
-					for (j = 0; j < 16; j = j + 1) begin
-						if (!o_ipv4_local_lut_ipv4_daddr_is_local && ipv4_local_addr_table[j] == r_daddr) begin
-							o_ipv4_local_lut_ipv4_daddr_is_local = 1;
-							o_ipv4_local_lut_ipv4_daddr_is_local_valid = 1;
-						end
-					end
-					state_next = SECOND_STAGE;	
-				end
+			if (i_ipv4_local_lut_ipv4_daddr_valid) begin
+				r_ipv4_local_lut_ipv4_daddr_is_local =
+					(r_is_local_s1 | r_is_local_s2 |
+					 r_is_local_s3 | r_is_local_s4);
+				r_ipv4_local_lut_out_wr_en = 1;
+			end else begin
+				r_ipv4_local_lut_out_wr_en = 0;
+				r_ipv4_local_lut_ipv4_daddr_is_local = 0;
 			end
-
-			SECOND_STAGE: begin
-				for (j = 16; j < 32; j = j + 1) begin
-					if (!o_ipv4_local_lut_ipv4_daddr_is_local && ipv4_local_addr_table[j] == r_daddr) begin
-						o_ipv4_local_lut_ipv4_daddr_is_local = 1;
-						o_ipv4_local_lut_ipv4_daddr_is_local_valid = 1;
-					end
-				end
-				state_next = FIRST_STAGE;	
-			end
-
-			//default: begin
-			//	o_ipv4_local_lut_ipv4_daddr_is_local = 0;
-			//	o_ipv4_local_lut_ipv4_daddr_is_local_valid = 0;
-			//end
-			endcase
 		end
-
-		state = state_next;
 	end
 
 // -----------------------------------------------------------------------------
