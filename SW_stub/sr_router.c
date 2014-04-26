@@ -90,7 +90,6 @@ void router_destroy( router_t* router ) {
 
 bool send_packet(byte *payload, uint32_t src, uint32_t dest, int len, bool is_arp_packet, bool is_hello_packet) {
     interface_t *target_intf = sr_integ_findsrcintf(dest);
-    debug_println("target_intf: %p", target_intf);
     if (dest != OSPF_IP && target_intf == NULL) {
         packet_info_t *pi = malloc_or_die(sizeof(packet_info_t));   //Freed (below).
         pi->packet = malloc_or_die(len+14);                         //Freed (below).
