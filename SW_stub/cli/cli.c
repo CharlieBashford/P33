@@ -247,7 +247,7 @@ void cli_show_hw_intf() {
     readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_0_HIGH, &high);
     mac = mac_lo_and_hi(low, high);
     mac_to_string(mac_str, &mac);
-    sprintf(buf, "%d  \t%s\n", 0, mac_str);
+    sprintf(buf, "%d  \t\t%s\n", 0, mac_str);
     cli_send_str(buf);
     
     readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_1_LOW, &low);
