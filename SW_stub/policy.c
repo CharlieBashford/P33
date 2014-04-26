@@ -217,7 +217,7 @@ void router_add_policy( router_t* router, addr_ip_t src_ip, addr_ip_t src_mask, 
     
 #ifdef _CPUMODE_
     
-    router_add_route(router, dest_ip, 0, dest_mask, "nf0", FALSE, TRUE);
+    router_add_route(router, dest_ip, 0, dest_mask, "nf0", TRUE, TRUE);
     
 #endif
     
