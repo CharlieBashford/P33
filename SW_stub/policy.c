@@ -306,13 +306,32 @@ void router_delete_all_policy( router_t *router) {
     pthread_mutex_lock(&router->policy_lock);
     
     //debug_println("called router_delete_all_policy");    // TODO remove debugging line
-   
-    router->num_policies = 0;
+    
     unsigned i;
     for (i = 0; i < router->num_policies; i++) {
         if (router->policy[i].secret != NULL)
             free(router->policy[i].secret);
     }
+    router->num_policies = 0;
     
+    /*
+#ifdef _CPUMODE_
+    unsigned i;
+    for (i = router->num_routes; i > 0; i--) { //Shift routes in hardware.
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, 0);
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, 0);
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, 0);
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, 0);
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, router->num_interfaces+i-1);
+        
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, ntohl(router->route[i].prefix));
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, ntohl(router->route[i].subnet_mask));
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, ntohl(router->route[i].next_hop));
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, router->route[i].interface.hw_oq);
+        writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, router->num_interfaces+i);
+    }
+    
+#endif
+    */
     pthread_mutex_unlock(&router->policy_lock);
 }
