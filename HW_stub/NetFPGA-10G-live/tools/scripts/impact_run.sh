@@ -95,6 +95,14 @@ nfdriver=`lsmod | grep nf10`
 
 if [ -n "$nfdriver" ]; then
 	rmmod nf10
+	rc=$?
+	case ${rc} in
+	0)      ;;
+	*)      echo "ERROR: FAILED TO UNLOAD nf10 DRIVER."
+		echo "Please terminate all programs still using netfpga driver and retry."
+		exit 1
+		;;
+	esac
 fi
 
 #Program FPGA
