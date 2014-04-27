@@ -210,6 +210,10 @@ void handle_no_route_to_host(packet_info_t *pi) {
     char target_ip_str[16];
     ip_to_string(target_ip_str, target_ip);
     debug_println("target_ip=%s", target_ip_str);
-    
+    if (router_lookup_interface_via_ip(get_router(), target_ip)) {
+        debug_println("Dropping Packet! Tried sending \"no route to host\" packet to self.");
+        return;
+    }
+
     send_packet(pi->packet+14, IPH_SRC(iphdr), target_ip, pi->len-14, FALSE, FALSE);
 }
