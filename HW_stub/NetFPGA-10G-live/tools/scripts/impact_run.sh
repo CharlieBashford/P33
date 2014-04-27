@@ -116,6 +116,15 @@ $NF_ROOT/tools/scripts/pci_rescan_run.sh
 if [ -e $NF_DESIGN_DIR/sw/host/driver/nf10.ko ]; then
 	echo "(Re)loading $NF_DESIGN_DIR/sw/host/driver/nf10.ko"
 	insmod $NF_DESIGN_DIR/sw/host/driver/nf10.ko
+	rc=$?
+	case ${rc} in
+	0)	/sbin/ifconfig nf0 up
+		/sbin/ifconfig nf1 up
+		/sbin/ifconfig nf2 up
+		/sbin/ifconfig nf3 up
+		;;
+	esac
+	
 else
 	echo $0": no project specific driver found - trying reference_nic"
 	if [ -e $NF_ROOT/projects/reference_nic/sw/host/driver/nf10.ko ]; then
