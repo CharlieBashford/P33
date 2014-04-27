@@ -286,7 +286,7 @@ bool router_delete_policy_entry( router_t *router, addr_ip_t src_ip, addr_ip_t s
     }
 
     unsigned j;
-/*
+    
 #ifdef _CPUMODE_
     
     for (j = i; j < router->num_policies; j++) { //Shift policies down by one
@@ -317,7 +317,7 @@ bool router_delete_policy_entry( router_t *router, addr_ip_t src_ip, addr_ip_t s
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, router->num_interfaces+router->num_policies+j-1);
     }
 #endif
-*/
+
     for (j = i; j < router->num_policies-1; j++) {
         router->policy[j] = router->policy[j+1];
     }
@@ -343,7 +343,7 @@ void router_delete_all_policy( router_t *router) {
     for (i = 0; i < router->num_policies; i++) {
         if (router->policy[i].secret != NULL)
             free(router->policy[i].secret);
-/*
+        
 #ifdef _CPUMODE_
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, 0);
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, 0);
@@ -351,11 +351,9 @@ void router_delete_all_policy( router_t *router) {
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_OQ, 0);
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, router->num_interfaces+i);
 #endif
-*/
+        
     }
 
-    
-    /*
 #ifdef _CPUMODE_
     unsigned i;
     for (i = router->num_routes; i > 0; i--) { //Shift routes in hardware.
@@ -372,7 +370,7 @@ void router_delete_all_policy( router_t *router) {
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_WR_ADDR, router->num_interfaces+i);
     }
 #endif
-    */
+    
     router->num_policies = 0;
     
     pthread_mutex_unlock(&router->policy_lock);
