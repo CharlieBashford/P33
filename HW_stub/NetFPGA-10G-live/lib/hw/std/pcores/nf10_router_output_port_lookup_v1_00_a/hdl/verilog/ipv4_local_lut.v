@@ -68,21 +68,21 @@ module ipv4_local_lut
 	// Clocked work:
 	// reset table or handle table reads and writes.
 	always @(posedge Bus2IP_Clk) begin
-		o_ipv4_local_lut_rd_ack = 0;
-		o_ipv4_local_lut_wr_ack = 0;
+		o_ipv4_local_lut_rd_ack <= 0;
+		o_ipv4_local_lut_wr_ack <= 0;
 
 		if (Bus2IP_Reset) begin
 			for (i = 0; i < 32; i = i + 1)
-				ipv4_local_addr_table[i] = {(1*32){1'b0}};
+				ipv4_local_addr_table[i] <= {(1*32){1'b0}};
 		end else begin
 			if (i_ipv4_local_lut_rd_req) begin
-				row_num_select = i_ipv4_local_lut_rd_addr;
-				o_ipv4_local_lut_rd_ack = 1;
+				row_num_select <= i_ipv4_local_lut_rd_addr;
+				o_ipv4_local_lut_rd_ack <= 1;
 			end else
 			if (i_ipv4_local_lut_wr_req) begin
 				ipv4_local_addr_table[i_ipv4_local_lut_wr_addr]
-					= i_ipv4_local_lut_wr_ipv4_addr;
-				o_ipv4_local_lut_wr_ack = 1;
+					<= i_ipv4_local_lut_wr_ipv4_addr;
+				o_ipv4_local_lut_wr_ack <= 1;
 			end
 		end
 	end
@@ -216,18 +216,18 @@ module ipv4_local_lut
 	always @(posedge clk) begin
 
 		if (reset) begin
-			r_ipv4_local_lut_ipv4_daddr_is_local	= 0;
-			r_ipv4_local_lut_out_wr_en		= 0;
+			r_ipv4_local_lut_ipv4_daddr_is_local	<= 0;
+			r_ipv4_local_lut_out_wr_en		<= 0;
 
 		end else begin
 			if (i_ipv4_local_lut_ipv4_daddr_valid) begin
-				r_ipv4_local_lut_ipv4_daddr_is_local =
+				r_ipv4_local_lut_ipv4_daddr_is_local <=
 					(r_is_local_s1 | r_is_local_s2 |
 					 r_is_local_s3 | r_is_local_s4);
-				r_ipv4_local_lut_out_wr_en = 1;
+				r_ipv4_local_lut_out_wr_en <= 1;
 			end else begin
-				r_ipv4_local_lut_out_wr_en = 0;
-				r_ipv4_local_lut_ipv4_daddr_is_local = 0;
+				r_ipv4_local_lut_out_wr_en <= 0;
+				r_ipv4_local_lut_ipv4_daddr_is_local <= 0;
 			end
 		end
 	end

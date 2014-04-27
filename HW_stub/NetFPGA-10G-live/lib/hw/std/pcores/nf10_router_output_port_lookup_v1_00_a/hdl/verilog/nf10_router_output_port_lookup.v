@@ -525,7 +525,9 @@ module nf10_router_output_port_lookup
 	wire						w_pktstate_valid;
 	wire						w_eth_is_for_us;
 	wire						w_eth_is_bmcast;
+`ifdef ASSIGNMENT_STAGE9
 	wire						w_eth_is_arp;
+`endif
 	wire						w_eth_is_ipv4;
 	wire						w_ipv4_can_handle_ipv4;
 	wire						w_ipv4_ttl_ok;
@@ -533,14 +535,14 @@ module nf10_router_output_port_lookup
 	wire						w_ipv4_csum_ok;
 	wire [15:0]					w_ipv4_csum_updated;
 	wire						w_ipv4_csum_out_valid;
-	wire [31:0]					w_ipv4_daddr;
+	//wire [31:0]					w_ipv4_daddr;
 	wire						w_ipv4_local_lut_ipv4_daddr_is_local;
 	wire						w_ipv4_local_lut_ipv4_daddr_is_local_valid;
 	wire						w_ipv4_arp_lut_ipv4_eth_addr_found;
 	wire [47:0]					w_ipv4_arp_lut_ipv4_eth_addr;
 	wire						w_ipv4_arp_lut_valid;
 	wire						w_ipv4_fib_lut_nh_found;
-	wire [31:0]					w_ipv4_fib_lut_nh;
+	//wire [31:0]					w_ipv4_fib_lut_nh;
 	wire [7:0]					w_ipv4_fib_lut_tuser;
 	wire						w_ipv4_fib_lut_valid;
 	wire [31:0]					w_im_ipv4_fib_lut_nh;
@@ -611,7 +613,7 @@ module nf10_router_output_port_lookup
 		// - ipv4
 		.i_ipv4_can_handle_ipv4		(w_ipv4_can_handle_ipv4),
 		.i_ipv4_ttl_ok			(w_ipv4_ttl_ok),
-		.i_ipv4_daddr			(w_ipv4_daddr),
+		//.i_ipv4_daddr			(w_ipv4_daddr),
 		.i_ipv4_out_valid		(w_ipv4_out_valid),
 		.i_ipv4_csum_ok			(w_ipv4_csum_ok),		// Really in Stage2 but signal from stage 1 module
 		.i_ipv4_csum_updated		(w_ipv4_csum_updated),		// Really in Stage2 but signal from stage 1 module
@@ -622,7 +624,7 @@ module nf10_router_output_port_lookup
 		.i_ipv4_daddr_is_local_valid	(w_ipv4_local_lut_ipv4_daddr_is_local_valid),
 		// - ipv4_fib_lut
 		.i_ipv4_fib_lut_nh_found	(w_ipv4_fib_lut_nh_found),
-		.i_ipv4_fib_lut_nh		(w_ipv4_fib_lut_nh),
+		//.i_ipv4_fib_lut_nh		(w_ipv4_fib_lut_nh),
 		.i_ipv4_fib_lut_tuser		(w_ipv4_fib_lut_tuser),
 		.i_ipv4_fib_lut_valid		(w_ipv4_fib_lut_valid),
 		// State3
@@ -643,11 +645,13 @@ module nf10_router_output_port_lookup
 		.o_counter_pkts_ip4_fwd		(w_counter_pkts_ip4_fwd),
 		.o_counter_pkts_ip4_local	(w_counter_pkts_ip4_local),
 		.o_counter_lpm_misses		(w_counter_lpm_misses),
-		.o_counter_arp_misses		(w_counter_arp_misses),
-		// ASSIGNMENT_STAGE9
+		.o_counter_arp_misses		(w_counter_arp_misses)
+`ifdef ASSIGNMENT_STAGE9
+		,
 		.o_counter_pkts_arp		(w_counter_pkts_arp),
 		.o_counter_pkts_ip4		(w_counter_pkts_ip4),
-		.o_counter_pkts_ospf		(w_counter_pkts_osp)
+		.o_counter_pkts_ospf		(w_counter_pkts_ospf)
+`endif
 	);
 
 	// ---------------------------------------------------------------------
@@ -693,7 +697,9 @@ module nf10_router_output_port_lookup
 		.i_rd_from_magic		(w_rd_from_magic),
 		.o_is_for_us			(w_eth_is_for_us),
 		.o_is_bmcast			(w_eth_is_bmcast),
+`ifdef ASSIGNMENT_STAGE9
 		.o_is_arp			(w_eth_is_arp),		// XXX-BZ antenna; unless we update the counter anyway
+`endif
 		.o_is_ipv4			(w_eth_is_ipv4),
 		.o_eth_out_valid		(w_eth_out_valid)
 	);
@@ -715,7 +721,7 @@ module nf10_router_output_port_lookup
 		// IPv4 options, ttl, daddr.
 		.o_can_handle_ipv4		(w_ipv4_can_handle_ipv4),
 		.o_ipv4_ttl_ok			(w_ipv4_ttl_ok),
-		.o_ipv4_daddr			(w_ipv4_daddr),
+		//.o_ipv4_daddr			(w_ipv4_daddr),
 		.o_ipv4_out_valid		(w_ipv4_out_valid),
 		// Immediate outputs for LUTs.
 		.o_im_ipv4_daddr		(w_im_ipv4_daddr),
@@ -787,7 +793,7 @@ module nf10_router_output_port_lookup
 		.i_ipv4_fib_lut_daddr		(w_im_ipv4_daddr),
 		.i_ipv4_fib_lut_daddr_valid	(w_im_ipv4_daddr_valid),
 		.o_ipv4_fib_lut_nh_found	(w_ipv4_fib_lut_nh_found),
-		.o_ipv4_fib_lut_nh		(w_ipv4_fib_lut_nh),
+		//.o_ipv4_fib_lut_nh		(w_ipv4_fib_lut_nh),
 		.o_ipv4_fib_lut_tuser		(w_ipv4_fib_lut_tuser),
 		.o_ipv4_fib_lut_valid		(w_ipv4_fib_lut_valid),
 		.o_im_ipv4_fib_lut_nh		(w_im_ipv4_fib_lut_nh),
@@ -820,8 +826,10 @@ module nf10_router_output_port_lookup
 		.clk				(AXI_ACLK),
 		.reset				(~AXI_RESETN),
 		.i_rd_from_magic		(w_rd_from_magic),
-		.i_ipv4_arp_lut_ipv4_daddr_valid (w_im_ipv4_fib_lut_valid),
-		.i_ipv4_arp_lut_ipv4_daddr	(w_im_ipv4_fib_lut_nh),
+		.i_ipv4_arp_lut_ipv4_daddr_valid (w_im_ipv4_daddr_valid),	// From IPv4
+		.i_ipv4_arp_lut_ipv4_daddr	(w_im_ipv4_daddr),
+		.i_ipv4_arp_lut_fib_daddr_valid (w_im_ipv4_fib_lut_valid),	// From FIB
+		.i_ipv4_arp_lut_fib_daddr	(w_im_ipv4_fib_lut_nh),
 		.o_ipv4_arp_lut_ipv4_eth_addr_found (w_ipv4_arp_lut_ipv4_eth_addr_found),
 		.o_ipv4_arp_lut_ipv4_eth_addr	(w_ipv4_arp_lut_ipv4_eth_addr),
 		.o_ipv4_arp_lut_valid		(w_ipv4_arp_lut_valid)
@@ -872,6 +880,14 @@ module nf10_router_output_port_lookup
 			r_counter_lpm_misses		<= r_counter_lpm_misses + 1;
 		if (w_counter_arp_misses)
 			r_counter_arp_misses		<= r_counter_arp_misses + 1;
+		// DEBUGGING:
+		r_counter_pkts_ospf[0] <= w_pktstate_valid;					// 0x01
+		r_counter_pkts_ospf[1] <= w_eth_out_valid;					// 0x02
+		r_counter_pkts_ospf[2] <= w_ipv4_out_valid;					// 0x04
+		r_counter_pkts_ospf[3] <= w_ipv4_csum_out_valid;				// 0x08
+		r_counter_pkts_ospf[4] <= w_ipv4_local_lut_ipv4_daddr_is_local_valid;		// 0x10
+		r_counter_pkts_ospf[5] <= w_ipv4_fib_lut_valid;					// 0x20
+		r_counter_pkts_ospf[6] <= w_ipv4_arp_lut_valid;					// 0x40
 `ifdef ASSIGNMENT_STAGE9
 		if (w_counter_pkts_arp)
 			r_counter_pkts_arp		<= r_counter_pkts_arp + 1;

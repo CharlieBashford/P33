@@ -60,7 +60,7 @@ module magic
 		// - ipv4
 		input					i_ipv4_can_handle_ipv4,	// if not, go to CPU, e.g., has options
 		input					i_ipv4_ttl_ok,		// if not, go to CPU
-		input [31:0]				i_ipv4_daddr,
+		//input [31:0]				i_ipv4_daddr,
 		input					i_ipv4_out_valid,	// (V,3)
 		// - ipv4 + 1cy
 		input					i_ipv4_csum_ok,		// if not, DISCARD
@@ -72,7 +72,7 @@ module magic
 		input					i_ipv4_daddr_is_local_valid, // (V,5)
 		// - ipv4_fib_lut
 		input					i_ipv4_fib_lut_nh_found,// if not, go to CPU
-		input [31:0]				i_ipv4_fib_lut_nh,
+		//input [31:0]				i_ipv4_fib_lut_nh,
 		input [7:0]				i_ipv4_fib_lut_tuser,
 		input					i_ipv4_fib_lut_valid,	// (V,6)
 		// State3
@@ -94,11 +94,13 @@ module magic
 		output reg				o_counter_pkts_ip4_fwd,
 		output reg				o_counter_pkts_ip4_local,
 		output reg				o_counter_lpm_misses,
-		output reg				o_counter_arp_misses,
-		// ASSIGNMENT_STAGE9
+		output reg				o_counter_arp_misses
+`ifdef ASSIGNMENT_STAGE9
+		,
 		output reg				o_counter_pkts_arp,
 		output reg				o_counter_pkts_ip4,
 		output reg				o_counter_pkts_ospf
+`endif
 	);
 
 
@@ -111,8 +113,6 @@ module magic
 	localparam				ONE_STATE_PIPE		= 2;
 
 	// Register.
-	reg					r_stage1_fifo_rd_en;
-	reg [1:0]				r_1_state, r_1_state_next;
 
 	// Birds on the wire.
 	wire					w_stage2_fifo_nearly_full;
@@ -140,7 +140,7 @@ module magic
 		.clk		(clk),
 		.reset		(reset),
 		.din		({S_AXIS_TLAST, S_AXIS_TUSER, S_AXIS_TSTRB, S_AXIS_TDATA}),
-		.rd_en		(/* r_stage1_fifo_rd_en */ !w_stage1_fifo_empty & !w_stage2_fifo_nearly_full),
+		.rd_en		(!w_stage1_fifo_empty & !w_stage2_fifo_nearly_full),
 		.wr_en		(S_AXIS_TVALID & !w_stage1_fifo_nearly_full),
 		// Outputs
 		.dout		({w_1_tlast, w_1_tuser, w_1_tstrb, w_1_tdata}),
@@ -149,38 +149,6 @@ module magic
 		.prog_full	(),
 		.empty		(w_stage1_fifo_empty)
 	);
-
-/*
-	always @(*) begin
-		r_stage1_fifo_rd_en	= 0;
-		r_1_state_next		= r_1_state;
-
-		case (r_1_state)
-		ONE_STATE_START: begin
-			if (!w_stage1_fifo_empty & !w_stage2_fifo_nearly_full) begin
-				r_stage1_fifo_rd_en = 1;
-				r_1_state_next = ONE_STATE_PIPE;
-			end
-		end
-
-		ONE_STATE_PIPE: begin
-			if (!w_stage1_fifo_empty & !w_stage2_fifo_nearly_full) begin
-				r_stage1_fifo_rd_en = 1;
-				if (w_1_tlast)
-					r_1_state_next = ONE_STATE_START;
-			end
-		end
-		endcase
-	end
-
-	always @(posedge clk) begin
-		if (reset) begin
-			r_1_state		<= ONE_STATE_START;
-		end else begin
-			r_1_state		<= r_1_state_next;
-		end
-	end
-*/
 
 	// ---------------------------------------------------------------------
 	// IPv4 Local/FIB lookup stage.
@@ -191,8 +159,6 @@ module magic
 	localparam				TWO_STATE_PIPE		= 2;
 
 	// Register.
-	reg					r_stage2_fifo_rd_en;
-	reg [1:0]				r_2_state, r_2_state_next;
 
 	// Birds on the wire.
 	wire					w_stage3_fifo_nearly_full;
@@ -201,26 +167,12 @@ module magic
 	wire [(C_M_AXIS_DATA_WIDTH/8)-1:0]	w_2_tstrb;
 	wire [C_M_AXIS_TUSER_WIDTH-1:0]		w_2_tuser;
 	wire					w_2_tlast;
-	// State1 output signals, add to the data.
-/*
-	wire					w_1_is_from_cpu;
-	wire					w_1_is_valid;
-	wire					w_1_to_cpu;
-	wire					w_2_is_from_cpu;
-	wire					w_2_is_valid;
-	wire					w_2_to_cpu;
-
-	// Spaghetti.
-	assign w_1_is_from_cpu			= (i_pkt_word2) ? i_pkt_is_from_cpu : 0;
-	assign w_1_is_valid			= (i_pkt_word2) ? i_eth_valid : 0;				// XXX-BZ BOGUS NOW
-	assign w_1_to_cpu			= (i_pkt_word2) ? (i_eth_is_bmcast | i_ipv4_to_cpu) : 0;
-*/
 
 	// ---------------------------------------------------------------------
 	// FIFO.
 	fallthrough_small_fifo
 	#(
-		.WIDTH(1 + C_M_AXIS_TUSER_WIDTH + (C_M_AXIS_DATA_WIDTH/8)+1 + C_M_AXIS_DATA_WIDTH /*+ 3*/),
+		.WIDTH(1 + C_M_AXIS_TUSER_WIDTH + (C_M_AXIS_DATA_WIDTH/8)+1 + C_M_AXIS_DATA_WIDTH),
 		.MAX_DEPTH_BITS(2)
 	) stage2
 	// inputs and outputs
@@ -228,50 +180,16 @@ module magic
 		// Inputs
 		.clk		(clk),
 		.reset		(reset),
-		.din		({w_1_tlast, w_1_tuser, w_1_tstrb, w_1_tdata /*,
-				    w_1_is_from_cpu, w_1_is_valid, w_1_to_cpu */}),
-		.rd_en		(/*r_stage2_fifo_rd_en*/ !w_stage2_fifo_empty & !w_stage3_fifo_nearly_full),
+		.din		({w_1_tlast, w_1_tuser, w_1_tstrb, w_1_tdata}),
+		.rd_en		(!w_stage2_fifo_empty & !w_stage3_fifo_nearly_full),
 		.wr_en		(!w_stage1_fifo_empty & !w_stage2_fifo_nearly_full),
 		// Outputs
-		.dout		({w_2_tlast, w_2_tuser, w_2_tstrb, w_2_tdata /*,
-				    w_2_is_from_cpu, w_2_is_valid, w_2_to_cpu */}),
+		.dout		({w_2_tlast, w_2_tuser, w_2_tstrb, w_2_tdata}),
 		.full		(),
 		.nearly_full	(w_stage2_fifo_nearly_full),
 		.prog_full	(),
 		.empty		(w_stage2_fifo_empty)
 	);
-
-/*
-	always @(*) begin
-		r_stage2_fifo_rd_en	= 0;
-		r_2_state_next		= r_2_state;
-
-		case (r_2_state)
-		TWO_STATE_START: begin
-			if (!w_stage2_fifo_empty & !w_stage3_fifo_nearly_full) begin
-				r_stage2_fifo_rd_en = 1;
-				r_2_state_next = TWO_STATE_PIPE;
-			end
-		end
-
-		TWO_STATE_PIPE: begin
-			if (!w_stage2_fifo_empty & !w_stage3_fifo_nearly_full) begin
-				r_stage2_fifo_rd_en = 1;
-				if (w_2_tlast)
-					r_2_state_next = TWO_STATE_START;
-			end
-		end
-		endcase
-	end
-
-	always @(posedge clk) begin
-		if (reset) begin
-			r_2_state		<= TWO_STATE_START;
-		end else begin
-			r_2_state		<= r_2_state_next;
-		end
-	end
-*/
 
 	// ---------------------------------------------------------------------
 	// IPv4 ARP Lookup/Output stage.
@@ -305,16 +223,10 @@ module magic
 	wire [(C_M_AXIS_DATA_WIDTH/8)-1:0]	w_i_m_tstrb;
 	wire [C_M_AXIS_TUSER_WIDTH-1:0]		w_i_m_tuser;
 	wire					w_i_m_tlast;
+
 	wire					w_meta_ready;
 	wire					w_discard;
-
-	wire					w_3_to_cpu;
-	wire					w_i_m_is_from_cpu;
-	wire					w_i_m_discard;
-	wire					w_i_m_to_cpu;
 	wire					w_to_cpu;
-	wire [15:0]				w_i_m_csum_updated;
-	wire [7:0]				w_ipv4_tuser;
 
 	// Spaghetti.
 	assign	w_meta_ready			=
@@ -333,7 +245,7 @@ module magic
 	// FIFO.
 	fallthrough_small_fifo
 	#(
-		.WIDTH(1 + C_M_AXIS_TUSER_WIDTH + (C_M_AXIS_DATA_WIDTH/8)+1 + C_M_AXIS_DATA_WIDTH /*+ 3 + 16 + 8*/),
+		.WIDTH(1 + C_M_AXIS_TUSER_WIDTH + (C_M_AXIS_DATA_WIDTH/8)+1 + C_M_AXIS_DATA_WIDTH),
 		.MAX_DEPTH_BITS(2)
 	) stage3
 	// inputs and outputs
@@ -341,15 +253,11 @@ module magic
 		// Inputs
 		.clk		(clk),
 		.reset		(reset),
-		.din		({w_2_tlast, w_2_tuser, w_2_tstrb, w_2_tdata /*,
-				    w_2_is_from_cpu, w_3_discard, w_3_to_cpu,
-				    i_ipv4_csum_updated, i_ipv4_tuser */}),
+		.din		({w_2_tlast, w_2_tuser, w_2_tstrb, w_2_tdata}),
 		.rd_en		(r_stage3_fifo_rd_en),
 		.wr_en		(!w_stage2_fifo_empty & !w_stage3_fifo_nearly_full),
 		// Outputs
-		.dout		({w_i_m_tlast, w_i_m_tuser, w_i_m_tstrb, w_i_m_tdata /*,
-				    w_i_m_is_from_cpu, w_i_m_discard, w_i_m_to_cpu,
-				    w_i_m_csum_updated, w_ipv4_tuser*/}),
+		.dout		({w_i_m_tlast, w_i_m_tuser, w_i_m_tstrb, w_i_m_tdata}),
 		.full		(),
 		.nearly_full	(w_stage3_fifo_nearly_full),
 		.prog_full	(),

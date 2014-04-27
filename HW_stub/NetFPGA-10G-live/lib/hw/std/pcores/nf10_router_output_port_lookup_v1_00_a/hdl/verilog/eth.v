@@ -56,7 +56,6 @@ module eth
 	localparam				SRC_PORT_POS	= 16;
 
 	// Local register(s) to keep track of ...
-	reg [15:0]				r_ethertype;
 	reg					r_eth_out_wr_en;
 	reg					r_is_bmcast;
 	reg					r_is_for_us;
@@ -72,7 +71,6 @@ module eth
 	assign					w_sport	=
 	    i_tuser[SRC_PORT_POS+7:SRC_PORT_POS];
 	assign					w_dmac	= i_tdata[255:208];
-	assign					w_etherype = i_tdata[159:144];
 	assign					o_eth_out_valid = !w_eth_out_empty;
 
 	// ---------------------------------------------------------------------
@@ -104,36 +102,33 @@ module eth
 	// Ethertype?
 	// Reset or advance state machine.
 	always @(posedge clk) begin
-		r_is_bmcast			= 0;
-		r_is_for_us			= 0;
-		r_is_arp			= 0;
-		r_is_ipv4			= 0;
-		r_eth_out_wr_en			= 0;
+		r_is_bmcast			<= 0;
+		r_is_for_us			<= 0;
+		r_is_arp			<= 0;
+		r_is_ipv4			<= 0;
+		r_eth_out_wr_en			<= 0;
 
 		if (reset) begin
-			r_ethertype		= 0;
-			r_eth_out_wr_en		= 0;
+			r_eth_out_wr_en		<= 0;
 
 		end else if (i_pkt_word1) begin
 
-			// Extract the ethertype.
-			r_ethertype = i_tdata[159:144];
-
-			case (r_ethertype)
+			// Ethertype
+			case (i_tdata[159:144])
 			ETHTYPE_IPV4: begin
-				r_is_ipv4 = 1;
+				r_is_ipv4 <= 1;
 			end
 
 			ETHTYPE_ARP: begin
-				r_is_arp = 1;
+				r_is_arp <= 1;
 			end
 			endcase
 
 			// Check if it is a broad-/multi-cast packet.
 			if (i_tdata[BMCAST_BIT] == 1'b1) begin
 				$display("Broad- or Muticast packet.");
-				r_is_bmcast = 1;
-				r_is_for_us = 1;
+				r_is_bmcast <= 1;
+				r_is_for_us <= 1;
 
 			end else begin
 				// Validate that the dmac matches the input
@@ -144,28 +139,28 @@ module eth
 				// MAC3.
 				8'b01000000: begin
 					if (w_dmac == i_mac3)
-						r_is_for_us = 1;
+						r_is_for_us <= 1;
 					// else garbage, defaults will drop it
 				end
 
 				// MAC32
 				8'b00010000: begin
 					if (w_dmac == i_mac2)
-						r_is_for_us = 1;
+						r_is_for_us <= 1;
 					// else garbage, defaults will drop it
 				end
 
 				// MAC1.
 				8'b00000100: begin
 					if (w_dmac == i_mac1)
-						r_is_for_us = 1;
+						r_is_for_us <= 1;
 					// else garbage, defaults will drop it
 				end
 
 				// MAC0.
 				8'b00000001: begin
 					if (w_dmac == i_mac0)
-						r_is_for_us = 1;
+						r_is_for_us <= 1;
 					// else garbage, defaults will drop it
 				end
 
@@ -176,7 +171,7 @@ module eth
 				endcase // w_sport
 			end
 
-			r_eth_out_wr_en = 1;
+			r_eth_out_wr_en <= 1;
 		end // !reset && !i_pkt_word1
 	end
 

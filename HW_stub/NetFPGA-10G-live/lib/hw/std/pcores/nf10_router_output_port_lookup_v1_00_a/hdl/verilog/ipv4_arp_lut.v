@@ -48,8 +48,10 @@ module ipv4_arp_lut
 		input					i_rd_from_magic,
 		// In-HW access for lookups.
 		// Destination address to lookup.
-		input					i_ipv4_arp_lut_ipv4_daddr_valid,
+		input					i_ipv4_arp_lut_ipv4_daddr_valid,	// IPv4
 		input [31:0]				i_ipv4_arp_lut_ipv4_daddr,
+		input					i_ipv4_arp_lut_fib_daddr_valid,		// FIB
+		input [31:0]				i_ipv4_arp_lut_fib_daddr,
 		// Is the address local?
 		output					o_ipv4_arp_lut_ipv4_eth_addr_found,
 		output [MAC_WIDTH-1:0]			o_ipv4_arp_lut_ipv4_eth_addr,
@@ -119,15 +121,21 @@ module ipv4_arp_lut
 	reg					r_ipv4_arp_lut_out_wr_en;
 	reg					r_ipv4_arp_lut_ipv4_eth_addr_found;
 	reg [MAC_WIDTH-1:0]			r_ipv4_arp_lut_ipv4_eth_addr;
+	reg [31:0]				r_ipv4_daddr;
 
 	integer					j,k,l,m;
 
 	// Birds on the wire.
 	wire [31:0]				w_daddr;
 	wire					w_ipv4_arp_lut_out_empty;
+	wire [3:0]				w_found;
+	wire					w_input_valid;
 
 	// Spaghetti.
-	assign					w_daddr = i_ipv4_arp_lut_ipv4_daddr;
+	assign					w_daddr = (|i_ipv4_arp_lut_fib_daddr) ? i_ipv4_arp_lut_fib_daddr : r_ipv4_daddr;
+	assign					w_input_valid = i_ipv4_arp_lut_fib_daddr_valid;
+	assign					w_found =
+	    (r_found_s4 << 3) | (r_found_s3 << 2) | (r_found_s2 << 1) | r_found_s1;
 	assign					o_ipv4_arp_lut_valid = !w_ipv4_arp_lut_out_empty;
 
 	// ---------------------------------------------------------------------
@@ -157,14 +165,18 @@ module ipv4_arp_lut
 	// ---------------------------------------------------------------------
 	// Do the table lookup in parallellellell.
 	always @(
-		w_daddr, i_ipv4_arp_lut_ipv4_daddr, i_ipv4_arp_lut_ipv4_daddr_valid,
+		w_daddr, w_input_valid,
+		ipv4_arp_table_eth[0], ipv4_arp_table_eth[1],
+		ipv4_arp_table_eth[2], ipv4_arp_table_eth[3],
+		ipv4_arp_table_eth[4], ipv4_arp_table_eth[5],
+		ipv4_arp_table_eth[6], ipv4_arp_table_eth[7],
 		ipv4_arp_table_ipv4[0], ipv4_arp_table_ipv4[1],
 		ipv4_arp_table_ipv4[2], ipv4_arp_table_ipv4[3],
 		ipv4_arp_table_ipv4[4], ipv4_arp_table_ipv4[5],
 		ipv4_arp_table_ipv4[6], ipv4_arp_table_ipv4[7]
 	) begin
 		r_found_s1 = 0;
-		if (i_ipv4_arp_lut_ipv4_daddr_valid) begin
+		if (w_input_valid) begin
 			r_eaddr_s1 = 48'h000000000000;
 			for (j = 0; j < 8; j = j + 1) begin
 				if (!r_found_s1 &&
@@ -179,14 +191,18 @@ module ipv4_arp_lut
 	end
 
 	always @(
-		w_daddr, i_ipv4_arp_lut_ipv4_daddr, i_ipv4_arp_lut_ipv4_daddr_valid,
+		w_daddr, w_input_valid,
+		ipv4_arp_table_eth[8], ipv4_arp_table_eth[9],
+		ipv4_arp_table_eth[10], ipv4_arp_table_eth[11],
+		ipv4_arp_table_eth[12], ipv4_arp_table_eth[13],
+		ipv4_arp_table_eth[14], ipv4_arp_table_eth[15],
 		ipv4_arp_table_ipv4[8], ipv4_arp_table_ipv4[9],
 		ipv4_arp_table_ipv4[10], ipv4_arp_table_ipv4[11],
 		ipv4_arp_table_ipv4[12], ipv4_arp_table_ipv4[13],
 		ipv4_arp_table_ipv4[14], ipv4_arp_table_ipv4[15]
 	) begin
 		r_found_s2 = 0;
-		if (i_ipv4_arp_lut_ipv4_daddr_valid) begin
+		if (w_input_valid) begin
 			r_eaddr_s2 = 48'h000000000000;
 			for (k = 8; k < 16; k = k + 1) begin
 				if (!r_found_s2 &&
@@ -201,14 +217,18 @@ module ipv4_arp_lut
 	end
 
 	always @(
-		w_daddr, i_ipv4_arp_lut_ipv4_daddr, i_ipv4_arp_lut_ipv4_daddr_valid,
+		w_daddr, w_input_valid,
+		ipv4_arp_table_eth[16], ipv4_arp_table_eth[17],
+		ipv4_arp_table_eth[18], ipv4_arp_table_eth[19],
+		ipv4_arp_table_eth[20], ipv4_arp_table_eth[21],
+		ipv4_arp_table_eth[22], ipv4_arp_table_eth[23],
 		ipv4_arp_table_ipv4[16], ipv4_arp_table_ipv4[17],
 		ipv4_arp_table_ipv4[18], ipv4_arp_table_ipv4[19],
 		ipv4_arp_table_ipv4[20], ipv4_arp_table_ipv4[21],
 		ipv4_arp_table_ipv4[22], ipv4_arp_table_ipv4[23]
 	) begin
 		r_found_s3 = 0;
-		if (i_ipv4_arp_lut_ipv4_daddr_valid) begin
+		if (w_input_valid) begin
 			r_eaddr_s3 = 48'h000000000000;
 			for (l = 16; l < 24; l = l + 1) begin
 				if (!r_found_s3 &&
@@ -223,14 +243,18 @@ module ipv4_arp_lut
 	end
 
 	always @(
-		w_daddr, i_ipv4_arp_lut_ipv4_daddr, i_ipv4_arp_lut_ipv4_daddr_valid,
+		w_daddr, w_input_valid,
+		ipv4_arp_table_eth[24], ipv4_arp_table_eth[25],
+		ipv4_arp_table_eth[26], ipv4_arp_table_eth[27],
+		ipv4_arp_table_eth[28], ipv4_arp_table_eth[29],
+		ipv4_arp_table_eth[30], ipv4_arp_table_eth[31],
 		ipv4_arp_table_ipv4[24], ipv4_arp_table_ipv4[25],
 		ipv4_arp_table_ipv4[26], ipv4_arp_table_ipv4[27],
 		ipv4_arp_table_ipv4[28], ipv4_arp_table_ipv4[29],
 		ipv4_arp_table_ipv4[30], ipv4_arp_table_ipv4[31]
 	) begin
 		r_found_s4 = 0;
-		if (i_ipv4_arp_lut_ipv4_daddr_valid) begin
+		if (w_input_valid) begin
 			r_eaddr_s4 = 48'h000000000000;
 			for (m = 24; m < 32; m = m + 1) begin
 				if (!r_found_s4 &&
@@ -249,25 +273,46 @@ module ipv4_arp_lut
 	always @(posedge clk) begin
 
 		if (reset) begin
-			r_ipv4_arp_lut_ipv4_eth_addr = 48'h000000000000;
-			r_ipv4_arp_lut_ipv4_eth_addr_found = 0;
-			r_ipv4_arp_lut_out_wr_en = 0;
+			r_ipv4_arp_lut_ipv4_eth_addr <= 48'h000000000000;
+			r_ipv4_arp_lut_ipv4_eth_addr_found <= 0;
+			r_ipv4_daddr <= 0;
+			r_ipv4_arp_lut_out_wr_en <= 0;
 		end else begin
 			if (i_ipv4_arp_lut_ipv4_daddr_valid) begin
-				r_ipv4_arp_lut_ipv4_eth_addr_found =
-					(r_found_s1 | r_found_s2 |
-					 r_found_s3 | r_found_s4);
-				r_ipv4_arp_lut_ipv4_eth_addr =
-					(r_found_s1) ? r_eaddr_s1 :	
-					(r_found_s2) ? r_eaddr_s2 :	
-					(r_found_s3) ? r_eaddr_s3 :	
-					(r_found_s4) ? r_eaddr_s4 :	
-					48'h000000000000;
-				r_ipv4_arp_lut_out_wr_en = 1;
+				r_ipv4_arp_lut_ipv4_eth_addr <= 48'h000000000000;
+				r_ipv4_arp_lut_ipv4_eth_addr_found <= 0;
+				r_ipv4_daddr <= i_ipv4_arp_lut_ipv4_daddr;
+				r_ipv4_arp_lut_out_wr_en <= 0;
+			end else if (i_ipv4_arp_lut_fib_daddr_valid) begin
+				casex (w_found)
+				4'bxxx1: begin
+					r_ipv4_arp_lut_ipv4_eth_addr_found <= 1;
+					r_ipv4_arp_lut_ipv4_eth_addr <= r_eaddr_s1;
+				end
+				4'bxx1x: begin
+					r_ipv4_arp_lut_ipv4_eth_addr_found <= 1;
+					r_ipv4_arp_lut_ipv4_eth_addr <= r_eaddr_s2;
+				end
+				4'bx1xx: begin
+					r_ipv4_arp_lut_ipv4_eth_addr_found <= 1;
+					r_ipv4_arp_lut_ipv4_eth_addr <= r_eaddr_s3;
+				end
+				4'b1xxx: begin
+					r_ipv4_arp_lut_ipv4_eth_addr_found <= 1;
+					r_ipv4_arp_lut_ipv4_eth_addr <= r_eaddr_s4;
+				end
+				default: begin
+					r_ipv4_arp_lut_ipv4_eth_addr_found <= 0;
+					r_ipv4_arp_lut_ipv4_eth_addr <= 48'h000000000000;
+				end
+				endcase
+				r_ipv4_daddr <= 0;
+				r_ipv4_arp_lut_out_wr_en <= 1;
 			end else begin
-				r_ipv4_arp_lut_ipv4_eth_addr = 48'h000000000000;
-				r_ipv4_arp_lut_ipv4_eth_addr_found = 0;
-				r_ipv4_arp_lut_out_wr_en = 0;
+				r_ipv4_arp_lut_ipv4_eth_addr <= 48'h000000000000;
+				r_ipv4_arp_lut_ipv4_eth_addr_found <= 0;
+				r_ipv4_daddr <= 0;
+				r_ipv4_arp_lut_out_wr_en <= 0;
 			end
 		end
 	end
