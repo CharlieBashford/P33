@@ -44,6 +44,7 @@ nextHopMAC = "dd:55:dd:66:dd:77"
 
 nftest_add_LPM_table_entry(index, subnetIP, subnetMask, nextHopIP, outPort)
 
+# XXX-BZ Aeh what?  Is this just testing that the register is not writeable?
 nftest_regwrite(XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_BAR0_PKT_SENT_CPU_ARP_MISS(), 1)
 
 nftest_barrier()
