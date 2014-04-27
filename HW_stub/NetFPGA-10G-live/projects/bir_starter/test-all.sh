@@ -23,8 +23,8 @@ LOG=$NF_DESIGN_DIR/test-${DATETIME}
 
 pushd $NF_DESIGN_DIR/test
 
-#ls -1 | egrep -v 'both_(pkt_arp|reg_aio|stage7_fourtoone|stage9_floodingsw)' | awk -F_ '/^both_/ { printf "/usr/bin/time ./nf_test.py sim --major %s --minor %s --isim\n", $2, $3 }'
-ls -1 | egrep -v 'both_(pkt_arp|reg_aio|stage7_fourtoone|stage9_floodingsw)' | awk -F_ '/^both_/ { printf "%s %s\n", $2, $3 }' | \
+#ls -1 | egrep -v 'both_(pkt_arp|reg_aio|stage7_fourtoone|stage9_floodingsw|simple_forwarding)' | awk -F_ '/^both_/ { printf "/usr/bin/time ./nf_test.py sim --major %s --minor %s --isim\n", $2, $3 }'
+ls -1 | egrep -v 'both_(pkt_arp|reg_aio|stage7_fourtoone|stage9_floodingsw|simple_forwarding)' | awk -F_ '/^both_/ { printf "%s %s\n", $2, $3 }' | \
 while read maj min; do
 
 	echo "==> Running test ${maj} ${min}"
