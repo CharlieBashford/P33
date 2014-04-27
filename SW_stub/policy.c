@@ -128,7 +128,7 @@ void calc_sha256(uint8_t answer[16], uint8_t *payload, unsigned offset, unsigned
     SHA256_CTX ctx;
     
     SHA256_Init(&ctx);
-    SHA256_Update(&ctx, secret, strlen(secret));
+    SHA256_Update(&ctx, secret, trlen(secret));
     SHA256_Update(&ctx, payload+offset, len-offset-16); //2 for the ICV field.
     SHA256_Final(digest, &ctx);
     
@@ -172,7 +172,7 @@ policy_t *router_find_matching_policy_sending( router_t* router, addr_ip_t match
     return NULL;
 }
 
-policy_t *router_find_matching_policy_receiving( router_t* router, /*addr_ip_t matching_src_ip, addr_ip_t matching_dest_ip,*/ addr_ip_t matching_local_end, addr_ip_t matching_remote_end) {
+policy_t *thl {
     pthread_mutex_lock(&router->policy_lock);
     
     
