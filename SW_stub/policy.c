@@ -287,9 +287,13 @@ bool router_delete_policy_entry( router_t *router, addr_ip_t src_ip, addr_ip_t s
 
     unsigned j;
     
+    for (j = i; j < router->num_policies-1; j++) {
+        router->policy[j] = router->policy[j+1];
+    }
+    
 #ifdef _CPUMODE_
     
-    for (j = i+1; j < router->num_policies; j++) { //Shift policies down by one
+    for (j = i; j < router->num_policies; j++) { //Shift policies down by one
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, 0);
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, 0);
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, 0);
@@ -318,9 +322,7 @@ bool router_delete_policy_entry( router_t *router, addr_ip_t src_ip, addr_ip_t s
     }
 #endif
 
-    for (j = i; j < router->num_policies-1; j++) {
-        router->policy[j] = router->policy[j+1];
-    }
+
     
     
     bool succeded = FALSE;
