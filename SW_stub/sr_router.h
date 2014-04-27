@@ -54,6 +54,7 @@ typedef struct {
     addr_ip_t subnet_mask;
     interface_t interface;
     bool dynamic;
+    bool incoming;
 } route_t;
 
 

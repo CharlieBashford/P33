@@ -22,7 +22,6 @@
 #define TYPE_HELLO 1
 #define TYPE_LSU 4
 
-
 struct pwospf_hdr {
     PACK_STRUCT_FIELD(uint16_t _ver_type);
     PACK_STRUCT_FIELD(uint16_t _packet_len);
@@ -107,7 +106,7 @@ void send_LSU_packet(unsigned seq_no);
 void generate_HELLO_thread();
 
 void router_add_route( router_t* router, addr_ip_t prefix, addr_ip_t next_hop,
-                      addr_ip_t subnet_mask, const char *intf_name, bool dynamic);
+                      addr_ip_t subnet_mask, const char *intf_name, bool dynamic, bool incoming);
 
 route_t *router_find_route_entry( router_t *router, addr_ip_t dest, addr_ip_t gw, addr_ip_t mask, const char *intf_name);
 

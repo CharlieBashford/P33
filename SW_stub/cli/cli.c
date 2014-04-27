@@ -198,9 +198,9 @@ void cli_show_hw_about() {
         readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_FILTER_IP, &ip);
         if (ip != 0) {
             char ip_str[STRLEN_IP];
-            ip_to_string(ip_str, ip);
+            ip_to_string(ip_str, htonl(ip));
             char buf[100];
-            sprintf(buf, "%d 't%s", i, ip_str);
+            sprintf(buf, "%d \t%s\n", i, ip_str);
             cli_send_str(buf);
         }
     }
@@ -247,7 +247,7 @@ void cli_show_hw_intf() {
     readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_0_HIGH, &high);
     mac = mac_lo_and_hi(low, high);
     mac_to_string(mac_str, &mac);
-    sprintf(buf, "%d  \t%s\n", 0, mac_str);
+    sprintf(buf, "%d  \t\t%s\n", 0, mac_str);
     cli_send_str(buf);
     
     readReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_MAC_1_LOW, &low);
@@ -566,7 +566,7 @@ void cli_manip_ip_ospf_up() {
 void cli_manip_ip_route_add( gross_route_t* data ) {
     route_t *route_entry = router_find_route_entry(get_router(), data->dest, data->gw, data->mask, data->intf_name);
     if (route_entry == NULL) {
-        router_add_route(get_router(), data->dest, data->gw, data->mask, data->intf_name, FALSE);
+        router_add_route(get_router(), data->dest, data->gw, data->mask, data->intf_name, FALSE, FALSE);
     } else
         cli_send_str("Route entry already exists.");
 }
