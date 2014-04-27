@@ -420,6 +420,11 @@ regs:
 	cd ../sw/host/include/  && rm -f xparam2regdefines.py && mv reg_defines.h ../
 	cd ../sw/host && cp ../../../../tools/scripts/python_parser.py . && python python_parser.py
 	cd ../sw/host && rm -f python_parser.py && mv reg_defines.py ../../lib/Python/reg_defines_reference_router.py 
+	if [ -e ../py-mapping.py ]; then \
+		ls -l ../py-mapping.py ../lib/Python/reg_defines_reference_router.py; \
+		cat ../py-mapping.py >> ../lib/Python/reg_defines_reference_router.py; \
+		ls -l ../py-mapping.py ../lib/Python/reg_defines_reference_router.py; \
+	fi
 
 sim: axi_model regs
 	./../test/$(TESTNAME)/run.py
