@@ -73,7 +73,7 @@ module ipv4_local_lut
 
 		if (Bus2IP_Reset) begin
 			for (i = 0; i < 32; i = i + 1)
-				ipv4_local_addr_table[i] <= {(1*32){1'b0}};
+				ipv4_local_addr_table[i] <= {32{1'b0}};
 		end else begin
 			if (i_ipv4_local_lut_rd_req) begin
 				row_num_select <= i_ipv4_local_lut_rd_addr;
@@ -92,12 +92,18 @@ module ipv4_local_lut
 	// for the moment.
 
 	// ---------------------------------------------------------------------
+`ifdef FIB_LOOKUP_FOR_LOOPS
 	reg					r_is_local_s1, r_is_local_s2;
 	reg					r_is_local_s3, r_is_local_s4;
+`else
+	reg					r_is_local;
+`endif
 	reg					r_ipv4_local_lut_ipv4_daddr_is_local;
 	reg					r_ipv4_local_lut_out_wr_en;
 
+`ifdef FIB_LOOKUP_FOR_LOOPS
 	integer					j, k, l, m;
+`endif
 
 	// Birds on the wire.
 	wire [31:0]				w_daddr;
@@ -133,6 +139,7 @@ module ipv4_local_lut
 
 	// ---------------------------------------------------------------------
 	// Do the table lookup in parallellellell.
+`ifdef FIB_LOOKUP_FOR_LOOPS
 	always @(
 		w_daddr, i_ipv4_local_lut_ipv4_daddr, i_ipv4_local_lut_ipv4_daddr_valid,
 		ipv4_local_addr_table[0], ipv4_local_addr_table[1],
@@ -208,6 +215,67 @@ module ipv4_local_lut
 			end
 		end
 	end
+`else
+	always @(
+		w_daddr, i_ipv4_local_lut_ipv4_daddr, i_ipv4_local_lut_ipv4_daddr_valid,
+		ipv4_local_addr_table[0], ipv4_local_addr_table[1],
+		ipv4_local_addr_table[2], ipv4_local_addr_table[3],
+		ipv4_local_addr_table[4], ipv4_local_addr_table[5],
+		ipv4_local_addr_table[6], ipv4_local_addr_table[7],
+		ipv4_local_addr_table[8], ipv4_local_addr_table[9],
+		ipv4_local_addr_table[10], ipv4_local_addr_table[11],
+		ipv4_local_addr_table[12], ipv4_local_addr_table[13],
+		ipv4_local_addr_table[14], ipv4_local_addr_table[15],
+		ipv4_local_addr_table[16], ipv4_local_addr_table[17],
+		ipv4_local_addr_table[18], ipv4_local_addr_table[19],
+		ipv4_local_addr_table[20], ipv4_local_addr_table[21],
+		ipv4_local_addr_table[22], ipv4_local_addr_table[23],
+		ipv4_local_addr_table[24], ipv4_local_addr_table[25],
+		ipv4_local_addr_table[26], ipv4_local_addr_table[27],
+		ipv4_local_addr_table[28], ipv4_local_addr_table[29],
+		ipv4_local_addr_table[30], ipv4_local_addr_table[31]
+	) begin
+		r_is_local = 0;
+
+		if (i_ipv4_local_lut_ipv4_daddr_valid) begin
+			case (w_daddr)
+			ipv4_local_addr_table[0]: r_is_local = 1;
+			ipv4_local_addr_table[1]: r_is_local = 1;
+			ipv4_local_addr_table[2]: r_is_local = 1;
+			ipv4_local_addr_table[3]: r_is_local = 1;
+			ipv4_local_addr_table[4]: r_is_local = 1;
+			ipv4_local_addr_table[5]: r_is_local = 1;
+			ipv4_local_addr_table[6]: r_is_local = 1;
+			ipv4_local_addr_table[7]: r_is_local = 1;
+			ipv4_local_addr_table[8]: r_is_local = 1;
+			ipv4_local_addr_table[9]: r_is_local = 1;
+			ipv4_local_addr_table[10]: r_is_local = 1;
+			ipv4_local_addr_table[11]: r_is_local = 1;
+			ipv4_local_addr_table[12]: r_is_local = 1;
+			ipv4_local_addr_table[13]: r_is_local = 1;
+			ipv4_local_addr_table[14]: r_is_local = 1;
+			ipv4_local_addr_table[15]: r_is_local = 1;
+			ipv4_local_addr_table[16]: r_is_local = 1;
+			ipv4_local_addr_table[17]: r_is_local = 1;
+			ipv4_local_addr_table[18]: r_is_local = 1;
+			ipv4_local_addr_table[19]: r_is_local = 1;
+			ipv4_local_addr_table[20]: r_is_local = 1;
+			ipv4_local_addr_table[21]: r_is_local = 1;
+			ipv4_local_addr_table[22]: r_is_local = 1;
+			ipv4_local_addr_table[23]: r_is_local = 1;
+			ipv4_local_addr_table[24]: r_is_local = 1;
+			ipv4_local_addr_table[25]: r_is_local = 1;
+			ipv4_local_addr_table[26]: r_is_local = 1;
+			ipv4_local_addr_table[27]: r_is_local = 1;
+			ipv4_local_addr_table[28]: r_is_local = 1;
+			ipv4_local_addr_table[29]: r_is_local = 1;
+			ipv4_local_addr_table[30]: r_is_local = 1;
+			ipv4_local_addr_table[31]: r_is_local = 1;
+			default: r_is_local = 0;
+			endcase
+		end
+	end
+`endif
 
 	// ---------------------------------------------------------------------
 	// Clocked work:
@@ -222,8 +290,12 @@ module ipv4_local_lut
 		end else begin
 			if (i_ipv4_local_lut_ipv4_daddr_valid) begin
 				r_ipv4_local_lut_ipv4_daddr_is_local <=
+`ifdef FIB_LOOKUP_FOR_LOOPS
 					(r_is_local_s1 | r_is_local_s2 |
 					 r_is_local_s3 | r_is_local_s4);
+`else
+					r_is_local;
+`endif
 				r_ipv4_local_lut_out_wr_en <= 1;
 			end else begin
 				r_ipv4_local_lut_out_wr_en <= 0;

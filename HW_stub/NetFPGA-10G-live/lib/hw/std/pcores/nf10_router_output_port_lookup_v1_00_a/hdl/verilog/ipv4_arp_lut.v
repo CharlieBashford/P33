@@ -91,8 +91,8 @@ module ipv4_arp_lut
 
 		if (Bus2IP_Reset) begin
 			for (i = 0; i < 32; i = i + 1) begin
-				ipv4_arp_table_eth[i]  <= {(2*32){1'b0}};
-				ipv4_arp_table_ipv4[i] <= {(1*32){1'b0}};
+				ipv4_arp_table_eth[i]  <= {MAC_WIDTH{1'b0}};
+				ipv4_arp_table_ipv4[i] <= {32{1'b0}};
 			end
 		end else begin
 			if (i_ipv4_arp_lut_rd_req) begin
@@ -114,28 +114,39 @@ module ipv4_arp_lut
 	// for the moment.
 
 	// ---------------------------------------------------------------------
-	reg [47:0]				r_eaddr_s1, r_eaddr_s2;
-	reg [47:0]				r_eaddr_s3, r_eaddr_s4;
+`ifdef FIB_LOOKUP_FOR_LOOPS
+	reg [MAC_WIDTH-1:0]			r_eaddr_s1, r_eaddr_s2;
+	reg [MAC_WIDTH-1:0]			r_eaddr_s3, r_eaddr_s4;
 	reg					r_found_s1, r_found_s2;
 	reg					r_found_s3, r_found_s4;
+`else
+	// One extra bit for ``invalid'' (not found and default) state.
+	reg [MAC_WIDTH:0]			r_found;
+`endif
 	reg					r_ipv4_arp_lut_out_wr_en;
 	reg					r_ipv4_arp_lut_ipv4_eth_addr_found;
 	reg [MAC_WIDTH-1:0]			r_ipv4_arp_lut_ipv4_eth_addr;
 	reg [31:0]				r_ipv4_daddr;
 
+`ifdef FIB_LOOKUP_FOR_LOOPS
 	integer					j,k,l,m;
+`endif
 
 	// Birds on the wire.
 	wire [31:0]				w_daddr;
 	wire					w_ipv4_arp_lut_out_empty;
+`ifdef FIB_LOOKUP_FOR_LOOPS
 	wire [3:0]				w_found;
+`endif
 	wire					w_input_valid;
 
 	// Spaghetti.
 	assign					w_daddr = (|i_ipv4_arp_lut_fib_daddr) ? i_ipv4_arp_lut_fib_daddr : r_ipv4_daddr;
-	assign					w_input_valid = i_ipv4_arp_lut_fib_daddr_valid;
+	assign					w_input_valid = i_ipv4_arp_lut_fib_daddr_valid & |w_daddr;
+`ifdef FIB_LOOKUP_FOR_LOOPS
 	assign					w_found =
 	    (r_found_s4 << 3) | (r_found_s3 << 2) | (r_found_s2 << 1) | r_found_s1;
+`endif
 	assign					o_ipv4_arp_lut_valid = !w_ipv4_arp_lut_out_empty;
 
 	// ---------------------------------------------------------------------
@@ -144,7 +155,7 @@ module ipv4_arp_lut
 	#(
 		.WIDTH(1 + MAC_WIDTH),
 		.MAX_DEPTH_BITS(2)
-	) ipv4_local_lut_out
+	) ipv4_arp_lut_out
 	// inputs and outputs
 	(
 		// Inputs
@@ -164,6 +175,7 @@ module ipv4_arp_lut
 
 	// ---------------------------------------------------------------------
 	// Do the table lookup in parallellellell.
+`ifdef FIB_LOOKUP_FOR_LOOPS
 	always @(
 		w_daddr, w_input_valid,
 		ipv4_arp_table_eth[0], ipv4_arp_table_eth[1],
@@ -176,11 +188,10 @@ module ipv4_arp_lut
 		ipv4_arp_table_ipv4[6], ipv4_arp_table_ipv4[7]
 	) begin
 		r_found_s1 = 0;
+		r_eaddr_s1 = 48'h000000000000;
 		if (w_input_valid) begin
-			r_eaddr_s1 = 48'h000000000000;
 			for (j = 0; j < 8; j = j + 1) begin
 				if (!r_found_s1 &&
-				    |ipv4_arp_table_eth[j] &&
 				    ipv4_arp_table_ipv4[j] == w_daddr)
 				begin
 					r_found_s1 = 1;
@@ -202,11 +213,10 @@ module ipv4_arp_lut
 		ipv4_arp_table_ipv4[14], ipv4_arp_table_ipv4[15]
 	) begin
 		r_found_s2 = 0;
+		r_eaddr_s2 = 48'h000000000000;
 		if (w_input_valid) begin
-			r_eaddr_s2 = 48'h000000000000;
 			for (k = 8; k < 16; k = k + 1) begin
 				if (!r_found_s2 &&
-				    |ipv4_arp_table_eth[k] &&
 				    ipv4_arp_table_ipv4[k] == w_daddr)
 				begin
 					r_found_s2 = 1;
@@ -228,11 +238,10 @@ module ipv4_arp_lut
 		ipv4_arp_table_ipv4[22], ipv4_arp_table_ipv4[23]
 	) begin
 		r_found_s3 = 0;
+		r_eaddr_s3 = 48'h000000000000;
 		if (w_input_valid) begin
-			r_eaddr_s3 = 48'h000000000000;
 			for (l = 16; l < 24; l = l + 1) begin
 				if (!r_found_s3 &&
-				    |ipv4_arp_table_eth[l] &&
 				    ipv4_arp_table_ipv4[l] == w_daddr)
 				begin
 					r_found_s3 = 1;
@@ -254,11 +263,10 @@ module ipv4_arp_lut
 		ipv4_arp_table_ipv4[30], ipv4_arp_table_ipv4[31]
 	) begin
 		r_found_s4 = 0;
+		r_eaddr_s4 = 48'h000000000000;
 		if (w_input_valid) begin
-			r_eaddr_s4 = 48'h000000000000;
 			for (m = 24; m < 32; m = m + 1) begin
 				if (!r_found_s4 &&
-				    |ipv4_arp_table_eth[m] &&
 				    ipv4_arp_table_ipv4[m] == w_daddr)
 				begin
 					r_found_s4 = 1;
@@ -267,6 +275,83 @@ module ipv4_arp_lut
 			end
 		end
 	end
+`else
+	always @(
+		w_daddr, w_input_valid,
+		ipv4_arp_table_eth[0], ipv4_arp_table_eth[1],
+		ipv4_arp_table_eth[2], ipv4_arp_table_eth[3],
+		ipv4_arp_table_eth[4], ipv4_arp_table_eth[5],
+		ipv4_arp_table_eth[6], ipv4_arp_table_eth[7],
+		ipv4_arp_table_eth[8], ipv4_arp_table_eth[9],
+		ipv4_arp_table_eth[10], ipv4_arp_table_eth[11],
+		ipv4_arp_table_eth[12], ipv4_arp_table_eth[13],
+		ipv4_arp_table_eth[14], ipv4_arp_table_eth[15],
+		ipv4_arp_table_eth[16], ipv4_arp_table_eth[17],
+		ipv4_arp_table_eth[18], ipv4_arp_table_eth[19],
+		ipv4_arp_table_eth[20], ipv4_arp_table_eth[21],
+		ipv4_arp_table_eth[22], ipv4_arp_table_eth[23],
+		ipv4_arp_table_eth[24], ipv4_arp_table_eth[25],
+		ipv4_arp_table_eth[26], ipv4_arp_table_eth[27],
+		ipv4_arp_table_eth[28], ipv4_arp_table_eth[29],
+		ipv4_arp_table_eth[30], ipv4_arp_table_eth[31],
+		ipv4_arp_table_ipv4[0], ipv4_arp_table_ipv4[1],
+		ipv4_arp_table_ipv4[2], ipv4_arp_table_ipv4[3],
+		ipv4_arp_table_ipv4[4], ipv4_arp_table_ipv4[5],
+		ipv4_arp_table_ipv4[6], ipv4_arp_table_ipv4[7],
+		ipv4_arp_table_ipv4[8], ipv4_arp_table_ipv4[9],
+		ipv4_arp_table_ipv4[10], ipv4_arp_table_ipv4[11],
+		ipv4_arp_table_ipv4[12], ipv4_arp_table_ipv4[13],
+		ipv4_arp_table_ipv4[14], ipv4_arp_table_ipv4[15],
+		ipv4_arp_table_ipv4[16], ipv4_arp_table_ipv4[17],
+		ipv4_arp_table_ipv4[18], ipv4_arp_table_ipv4[19],
+		ipv4_arp_table_ipv4[20], ipv4_arp_table_ipv4[21],
+		ipv4_arp_table_ipv4[22], ipv4_arp_table_ipv4[23],
+		ipv4_arp_table_ipv4[24], ipv4_arp_table_ipv4[25],
+		ipv4_arp_table_ipv4[26], ipv4_arp_table_ipv4[27],
+		ipv4_arp_table_ipv4[28], ipv4_arp_table_ipv4[29],
+		ipv4_arp_table_ipv4[30], ipv4_arp_table_ipv4[31]
+	) begin
+		r_found = { (1+MAC_WIDTH){40'b0} };
+
+		if (w_input_valid) begin
+			case (w_daddr)
+			ipv4_arp_table_ipv4[0]: r_found = { 1'b1, ipv4_arp_table_eth[0] };
+			ipv4_arp_table_ipv4[1]: r_found = { 1'b1, ipv4_arp_table_eth[1] };
+			ipv4_arp_table_ipv4[2]: r_found = { 1'b1, ipv4_arp_table_eth[2] };
+			ipv4_arp_table_ipv4[3]: r_found = { 1'b1, ipv4_arp_table_eth[3] };
+			ipv4_arp_table_ipv4[4]: r_found = { 1'b1, ipv4_arp_table_eth[4] };
+			ipv4_arp_table_ipv4[5]: r_found = { 1'b1, ipv4_arp_table_eth[5] };
+			ipv4_arp_table_ipv4[6]: r_found = { 1'b1, ipv4_arp_table_eth[6] };
+			ipv4_arp_table_ipv4[7]: r_found = { 1'b1, ipv4_arp_table_eth[7] };
+			ipv4_arp_table_ipv4[8]: r_found = { 1'b1, ipv4_arp_table_eth[8] };
+			ipv4_arp_table_ipv4[9]: r_found = { 1'b1, ipv4_arp_table_eth[9] };
+			ipv4_arp_table_ipv4[10]: r_found = { 1'b1, ipv4_arp_table_eth[10] };
+			ipv4_arp_table_ipv4[11]: r_found = { 1'b1, ipv4_arp_table_eth[11] };
+			ipv4_arp_table_ipv4[12]: r_found = { 1'b1, ipv4_arp_table_eth[12] };
+			ipv4_arp_table_ipv4[13]: r_found = { 1'b1, ipv4_arp_table_eth[13] };
+			ipv4_arp_table_ipv4[14]: r_found = { 1'b1, ipv4_arp_table_eth[14] };
+			ipv4_arp_table_ipv4[15]: r_found = { 1'b1, ipv4_arp_table_eth[15] };
+			ipv4_arp_table_ipv4[16]: r_found = { 1'b1, ipv4_arp_table_eth[16] };
+			ipv4_arp_table_ipv4[17]: r_found = { 1'b1, ipv4_arp_table_eth[17] };
+			ipv4_arp_table_ipv4[18]: r_found = { 1'b1, ipv4_arp_table_eth[18] };
+			ipv4_arp_table_ipv4[19]: r_found = { 1'b1, ipv4_arp_table_eth[19] };
+			ipv4_arp_table_ipv4[20]: r_found = { 1'b1, ipv4_arp_table_eth[20] };
+			ipv4_arp_table_ipv4[21]: r_found = { 1'b1, ipv4_arp_table_eth[21] };
+			ipv4_arp_table_ipv4[22]: r_found = { 1'b1, ipv4_arp_table_eth[22] };
+			ipv4_arp_table_ipv4[23]: r_found = { 1'b1, ipv4_arp_table_eth[23] };
+			ipv4_arp_table_ipv4[24]: r_found = { 1'b1, ipv4_arp_table_eth[24] };
+			ipv4_arp_table_ipv4[25]: r_found = { 1'b1, ipv4_arp_table_eth[25] };
+			ipv4_arp_table_ipv4[26]: r_found = { 1'b1, ipv4_arp_table_eth[26] };
+			ipv4_arp_table_ipv4[27]: r_found = { 1'b1, ipv4_arp_table_eth[27] };
+			ipv4_arp_table_ipv4[28]: r_found = { 1'b1, ipv4_arp_table_eth[28] };
+			ipv4_arp_table_ipv4[29]: r_found = { 1'b1, ipv4_arp_table_eth[29] };
+			ipv4_arp_table_ipv4[30]: r_found = { 1'b1, ipv4_arp_table_eth[30] };
+			ipv4_arp_table_ipv4[31]: r_found = { 1'b1, ipv4_arp_table_eth[31] };
+			default: r_found = { (1+MAC_WIDTH){1'b0} };
+			endcase
+		end
+	end
+`endif
 
 	// ---------------------------------------------------------------------
 	// Clocked work:
@@ -284,6 +369,7 @@ module ipv4_arp_lut
 				r_ipv4_daddr <= i_ipv4_arp_lut_ipv4_daddr;
 				r_ipv4_arp_lut_out_wr_en <= 0;
 			end else if (i_ipv4_arp_lut_fib_daddr_valid) begin
+`ifdef FIB_LOOKUP_FOR_LOOPS
 				casex (w_found)
 				4'bxxx1: begin
 					r_ipv4_arp_lut_ipv4_eth_addr_found <= 1;
@@ -307,6 +393,10 @@ module ipv4_arp_lut
 				end
 				endcase
 				r_ipv4_daddr <= 0;
+`else
+				r_ipv4_arp_lut_ipv4_eth_addr_found <= r_found[48];
+				r_ipv4_arp_lut_ipv4_eth_addr <= r_found[0+:MAC_WIDTH];
+`endif
 				r_ipv4_arp_lut_out_wr_en <= 1;
 			end else begin
 				r_ipv4_arp_lut_ipv4_eth_addr <= 48'h000000000000;
