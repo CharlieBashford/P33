@@ -34,7 +34,9 @@ module ipv4
 		// IPv4 data 2cy.
 		output				o_can_handle_ipv4,
 		output				o_ipv4_ttl_ok,
+`ifdef NOT_DISABLE_UNSUED
 		output [31:0]			o_ipv4_daddr,
+`endif
 		output				o_ipv4_out_valid,
 		// Csum 3cy.
 		output				o_ipv4_csum_ok,
@@ -56,12 +58,13 @@ module ipv4
 	reg [17:0]			r_h2_ipv4_csum, r_h2_ipv4_csum_next;
 	reg [19:0]			r_ipv4_csum;
 	reg [15:0]			r_ipv4_csum_r;
-	reg [31:0]			r_ipv4_daddr, r_ipv4_daddr_next;
+	reg [31:0]			r_ipv4_daddr;
 	reg				r_is_ipv4_noopt, r_is_ipv4_noopt_next;
 	reg				r_ipv4_csum_ok;
 	reg				r_cy_3, r_cy_3_next;
 	reg [15:0]			r_ocsum, r_ocsum_next;
-	reg [16:0]			r_ipv4_csum_updated_folded;
+	reg [16:0]			r_ipv4_csum_updated;
+	reg [15:0]			r_ipv4_csum_updated_folded;
 	// TTL
 	reg 				r_state, r_state_next;
 	reg				r_ttl_ok, r_ttl_ok_next;
@@ -92,7 +95,11 @@ module ipv4
 	// FIFOs.
 	fallthrough_small_fifo
 	#(
+`ifdef NOT_DISABLE_UNSUED
 		.WIDTH(1 + 1 + 32),
+`else
+		.WIDTH(1 + 1),
+`endif
 		.MAX_DEPTH_BITS(2)
 	) ipv4_out
 	// inputs and outputs
@@ -100,11 +107,19 @@ module ipv4
 		// Inputs
 		.clk		(clk),
 		.reset		(reset),
+`ifdef NOT_DISABLE_UNSUED
 		.din		({r_ttl_ok, r_is_ipv4_noopt, r_ipv4_daddr}), // goes in on 2nd cy
+`else
+		.din		({r_ttl_ok, r_is_ipv4_noopt}),		 // goes in on 2nd cy
+`endif
 		.rd_en		(i_rd_from_magic),
 		.wr_en		(r_ipv4_out_wr_en),
 		// Outputs
+`ifdef NOT_DISABLE_UNSUED
 		.dout		({o_ipv4_ttl_ok, o_can_handle_ipv4, o_ipv4_daddr}),
+`else
+		.dout		({o_ipv4_ttl_ok, o_can_handle_ipv4}),
+`endif
 		.full		(),
 		.nearly_full	(),
 		.prog_full	(),
@@ -121,7 +136,7 @@ module ipv4
 		// Inputs
 		.clk		(clk),
 		.reset		(reset),
-		.din		({r_ipv4_csum_ok, r_ipv4_csum_updated_folded[15:0]}),	// goes in on 3rd cy
+		.din		({r_ipv4_csum_ok, r_ipv4_csum_updated_folded}),	// goes in on 3rd cy
 		.rd_en		(i_rd_from_magic),
 		.wr_en		(r_ipv4_csum_out_wr_en),
 		// Outputs
@@ -146,6 +161,9 @@ module ipv4
 		// Make sure we always initialise to a (default) value.
 		r_ipv4_csum_ok		= 0;
 		r_ipv4_csum_out_wr_en	= 0;
+		r_ipv4_csum_r		= 0;
+		r_ipv4_csum_updated	= 0;
+		r_ipv4_csum_updated_folded = 0;
 
 		if (r_cy_3) begin
 			// Add carry.
@@ -165,9 +183,9 @@ module ipv4
 			// subtracting one.  If we hit a carry, that is
 			// too bad. grml.
 
-			r_ipv4_csum_updated_folded = r_ocsum[15:0] + 16'h0100;	// NBO, byte swapped
-			r_ipv4_csum_updated_folded = r_ipv4_csum_updated_folded[15:0] +
-			    r_ipv4_csum_updated_folded[16];
+			r_ipv4_csum_updated = r_ocsum[15:0] + 16'h0100;	// NBO, byte swapped
+			r_ipv4_csum_updated_folded = r_ipv4_csum_updated[15:0] +
+			    r_ipv4_csum_updated[16];
 
 			r_ipv4_csum_out_wr_en = 1;
 		end
@@ -234,7 +252,9 @@ module ipv4
 	// TTL ok?
 	// We must delay the signal by one clock cycle to make it align with
 	// the others from ethernet and the IPv4 csum above.
-	always @(i_tdata[79:72], i_pkt_word1, i_pkt_word2, r_state) begin
+	always @(
+		i_tdata[79:72], i_pkt_word1, i_pkt_word2, r_state, r_ttl_ok
+	) begin
 		// Make sure we always initialise to a (default) value.
 		r_state_next			= r_state;
 		r_ttl_ok_next			= r_ttl_ok;

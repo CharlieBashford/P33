@@ -43,7 +43,9 @@ module eth
 		// the ARP counter anymore.
 		output				o_is_for_us,
 		output				o_is_bmcast,
+`ifdef ASSIGNMENT_STAGE9
 		output				o_is_arp,
+`endif
 		output				o_is_ipv4,
 		output				o_eth_out_valid
 	);
@@ -59,7 +61,9 @@ module eth
 	reg					r_eth_out_wr_en;
 	reg					r_is_bmcast;
 	reg					r_is_for_us;
+`ifdef ASSIGNMENT_STAGE9
 	reg					r_is_arp;
+`endif
 	reg					r_is_ipv4;
 
 	// Birds on wires..
@@ -77,7 +81,11 @@ module eth
 	// FIFO.
 	fallthrough_small_fifo
 	#(
+`ifdef ASSIGNMENT_STAGE9
 		.WIDTH(4),
+`else
+		.WIDTH(3),
+`endif
 		.MAX_DEPTH_BITS(2)
 	) eth_out
 	// inputs and outputs
@@ -85,11 +93,19 @@ module eth
 		// Inputs
 		.clk		(clk),
 		.reset		(reset),
+`ifdef ASSIGNMENT_STAGE9
 		.din		({r_is_bmcast, r_is_for_us, r_is_arp, r_is_ipv4}),	// goes in on 2nd cy
+`else
+		.din		({r_is_bmcast, r_is_for_us, r_is_ipv4}),		// goes in on 2nd cy
+`endif
 		.rd_en		(i_rd_from_magic),
 		.wr_en		(r_eth_out_wr_en),
 		// Outputs
+`ifdef ASSIGNMENT_STAGE9
 		.dout		({o_is_bmcast, o_is_for_us, o_is_arp, o_is_ipv4}),
+`else
+		.dout		({o_is_bmcast, o_is_for_us, o_is_ipv4}),
+`endif
 		.full		(),
 		.nearly_full	(),
 		.prog_full	(),
@@ -104,7 +120,9 @@ module eth
 	always @(posedge clk) begin
 		r_is_bmcast			<= 0;
 		r_is_for_us			<= 0;
+`ifdef ASSIGNMENT_STAGE9
 		r_is_arp			<= 0;
+`endif
 		r_is_ipv4			<= 0;
 		r_eth_out_wr_en			<= 0;
 
@@ -119,9 +137,11 @@ module eth
 				r_is_ipv4 <= 1;
 			end
 
+`ifdef ASSIGNMENT_STAGE9
 			ETHTYPE_ARP: begin
 				r_is_arp <= 1;
 			end
+`endif
 			endcase
 
 			// Check if it is a broad-/multi-cast packet.

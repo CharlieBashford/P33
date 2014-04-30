@@ -37,8 +37,8 @@ while read maj min; do
 	popd
 
 	case ${MODE} in
-	sim)	$NF_ROOT/tools/scripts/nf10_sim_registers_axi_logs.py > ${LOG}-${maj}_${min}_pkts.log 2>&1
-		$NF_ROOT/tools/scripts/nf10_sim_reconcile_axi_logs.py > ${LOG}-${maj}_${min}_regs.log 2>&1
+	sim)	$NF_ROOT/tools/scripts/nf10_sim_registers_axi_logs.py > ${LOG}-${maj}_${min}_regs.log 2>&1
+		$NF_ROOT/tools/scripts/nf10_sim_reconcile_axi_logs.py > ${LOG}-${maj}_${min}_pkts.log 2>&1
 		;;
 	hw)	../dump-regs >> ${LOG}-${maj}_${min} 2>&1
 		;;

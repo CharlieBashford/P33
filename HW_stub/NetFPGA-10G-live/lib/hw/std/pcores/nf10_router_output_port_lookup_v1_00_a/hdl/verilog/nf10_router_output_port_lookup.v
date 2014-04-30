@@ -404,8 +404,8 @@ module nf10_router_output_port_lookup
 	wire					ipv4_fib_lut_wr_req;
 	wire					ipv4_fib_lut_wr_ack;
 	wire [IPV4_FIB_LUT_ROW_BITS-1:0]	ipv4_fib_lut_wr_addr;
-	//wire [7:0]				ipv4_fib_lut_wr_ipv4_oif;
-	wire [31:0]				ipv4_fib_lut_wr_ipv4_oif;
+	wire [23:0]				ipv4_fib_lut_ipif_tbl_wr_data;	/* __antenna */
+	wire [7:0]				ipv4_fib_lut_wr_ipv4_oif;
 	wire [31:0]				ipv4_fib_lut_wr_ipv4_nh;
 	wire [31:0]				ipv4_fib_lut_wr_ipv4_mask;
 	wire [31:0]				ipv4_fib_lut_wr_ipv4_net;
@@ -444,7 +444,8 @@ module nf10_router_output_port_lookup
 		.tbl_wr_req	( ipv4_fib_lut_wr_req ),
 		.tbl_wr_ack	( ipv4_fib_lut_wr_ack ),
 		.tbl_wr_addr	( ipv4_fib_lut_wr_addr ),
-		.tbl_wr_data	( { ipv4_fib_lut_wr_ipv4_oif,
+		.tbl_wr_data	( { ipv4_fib_lut_ipif_tbl_wr_data,
+					ipv4_fib_lut_wr_ipv4_oif,
 					ipv4_fib_lut_wr_ipv4_nh,
 					ipv4_fib_lut_wr_ipv4_mask,
 					ipv4_fib_lut_wr_ipv4_net } )
