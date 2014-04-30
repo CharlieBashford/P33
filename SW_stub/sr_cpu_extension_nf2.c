@@ -110,6 +110,7 @@ int sr_cpu_input( struct sr_instance* sr ) {
                         debug_println( "Warning: error when reading on HW socket to %s",
                                        intf->name );
                     else {
+#if 0
                         /* check packet for decap first */
                         if( len >= 34 ) {
                             if( buf[23] == 0x04 || buf[23] == 0xF4 ) {
@@ -127,6 +128,7 @@ count+=len;fprintf(stderr,"%llu\n",count-20);
                                 continue;
                             }
                         }
+#endif
                         /* send the packet to our processing pipeline */
                         sr_integ_input( sr, buf, len, intf );
 
