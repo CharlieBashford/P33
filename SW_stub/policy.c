@@ -359,6 +359,7 @@ void router_delete_all_policy( router_t *router) {
 #ifdef _CPUMODE_
     int j;
     for (j = router->num_routes-1; j >= 0; j--) { //Shift routes in hardware.
+        debug_println("j=%d", j);
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP, 0);
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_IP_MASK, 0);
         writeReg(router->nf.fd, XPAR_NF10_ROUTER_OUTPUT_PORT_LOOKUP_0_LPM_NEXT_HOP_IP, 0);
